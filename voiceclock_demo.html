@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>语音时钟 Demo</title>
+<style>
+:root{
+  --bg:#f6f8fc;
+  --surface:#ffffff;
+  --surface2:#eef4ff;
+  --surface3:#f3f8ff;
+  --text:#0e1733;
+  --muted:#59677e;
+  --primary:#245dca;
+  --primary2:#2868d3;
+  --border:#dfe7f4;
+  --shadow:0 10px 30px rgba(37,74,133,.10);
+  --radius:24px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:linear-gradient(180deg,#f8fbff,#eef3f9);
+  color:var(--text);
+}
+button,input,select{font:inherit}
+button,summary,select{cursor:pointer}
+button{color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{
+  outline:3px solid var(--primary);outline-offset:3px;
+}
+h1,h2,h3,p{margin:0}
+.app{max-width:430px;min-height:100vh;margin:auto;background:var(--bg);padding:22px 16px 32px}
+.topbar{padding:0 4px 18px}
+.title{font-size:30px;font-weight:800;letter-spacing:.02em}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.cardhead>div{min-width:0}
+.cardtitle{font-size:21px;font-weight:800}
+.subtitle{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.5}
+.toggle{display:grid;place-items:center;min-width:54px;min-height:48px;cursor:pointer}
+.switch{appearance:none;display:block;width:54px;height:32px;margin:0;padding:2px;border:2px solid #8998ae;border-radius:999px;background:#8998ae;cursor:pointer}
+.switch::before{content:"";display:block;width:24px;height:24px;border-radius:50%;background:white;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.switch:checked{background:var(--primary);border-color:var(--primary)}
+.switch:checked::before{transform:translateX(22px)}
+.switch:disabled{opacity:.45;cursor:not-allowed}
+.hero{background:linear-gradient(135deg,#eef5ff,#f8fbff);border-radius:18px;padding:16px;border:1px solid #e0e9f6}
+.bigtime{font-size:42px;font-weight:850;letter-spacing:.02em;line-height:1.3}
+.statusgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.status{background:var(--surface2);border-radius:16px;padding:12px;min-height:78px;overflow-wrap:anywhere}
+.status small{color:var(--muted);display:block;margin-bottom:5px}
+.status strong{font-size:17px}
+.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;background:#edf3fc;border:0;border-radius:18px;padding:4px;margin:12px 0}
+.tabs label{position:relative;text-align:center}
+.tabs input{position:absolute;opacity:0;width:1px;height:1px}
+.tabs span{display:grid;place-items:center;min-height:48px;border-radius:14px;color:#2357a8;font-weight:700;cursor:pointer}
+.tabs input:checked+span{background:var(--primary);color:white}
+.tabs input:focus-visible+span{outline:3px solid var(--primary);outline-offset:3px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0}
+.soft,.dnd{background:var(--surface3);border-radius:18px;padding:14px;margin-top:12px}
+.label{font-weight:800}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.pill{border:1px solid #a9c8ff;background:#f7fbff;color:var(--primary);border-radius:999px;padding:10px 13px;min-height:44px;font-weight:700}
+summary{min-height:44px;padding:12px 0;font-weight:700;color:var(--primary)}
+.timegroup{border-top:1px solid var(--border)}
+.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:4px 0 14px}
+.time{border:1px solid #b6c9e7;background:white;border-radius:999px;min-height:48px;padding:10px 6px;text-align:center;font-weight:650}
+.time[aria-pressed=true]{background:linear-gradient(135deg,var(--primary),var(--primary2));color:white;border-color:transparent}
+.preview{display:flex;align-items:center;gap:12px;width:100%;border:1px solid #d3e3f8;background:#edf5ff;color:var(--text);border-radius:18px;padding:13px 14px;margin-top:14px;text-align:left}
+.preview .label,.preview .subtitle{display:block}
+.play{flex:0 0 42px;height:42px;border-radius:50%;display:grid;place-items:center;color:white;background:var(--primary);font-weight:900}
+.rangebox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+input[type=range]{width:100%;min-height:44px;accent-color:var(--primary)}
+output{color:var(--primary);font-size:19px;font-weight:800}
+select,.timefield,.datefield{border:1px solid #b5c4da;background:#f6f9fe;border-radius:12px;padding:10px;color:var(--text);min-height:48px;max-width:100%}
+.timefield,.datefield{width:100%;min-width:0;margin-top:6px}
+.twocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:0;padding:0;margin:12px 0 0}
+.twocol label{min-width:0;font-size:14px}
+.twocol:disabled{opacity:.55}
+.info{color:var(--muted);font-size:13px;line-height:1.6;margin-top:10px}
+.notice{color:#76500b;background:#fff6df;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5;margin-top:12px}
+.error{color:#9c2525;font-size:14px;line-height:1.5;margin-top:8px}
+.error:empty{display:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);background:#1d2a44;color:white;padding:12px 16px;border-radius:14px;opacity:0;pointer-events:none;transition:.2s;width:max-content;max-width:min(398px,calc(100% - 32px));text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (max-width:370px){.app{padding:18px 12px 28px}.card{padding:14px}.title{font-size:27px}.times{gap:7px}.time{font-size:14px}}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <h1 class="title">语音时钟</h1>
+    <p class="subtitle">北京时间 · 中文语音</p>
+    <p class="info">交互 Demo：设置在本次页面内保留，刷新后恢复默认；试听仅展示文案，不播放语音或执行后台任务。</p>
+  </header>
+
+  <section class="card" aria-labelledby="statusTitle">
+    <h2 class="cardtitle" id="statusTitle">当前状态</h2>
+    <div class="hero" style="margin-top:14px">
+      <div class="subtitle" id="clockDate">北京时间</div>
+      <div class="bigtime" id="clock">--:--</div>
+      <div class="subtitle" id="currentSeason">当前作息组：—</div>
+    </div>
+    <div class="statusgrid">
+      <div class="status"><small>下一次报时</small><strong id="nextAnnouncement">已关闭</strong></div>
+      <div class="status"><small>当前组已选时段</small><strong id="statusCount">0 个</strong></div>
+      <div class="status"><small>语音报时</small><strong id="statusAnn">已关闭</strong></div>
+      <div class="status"><small>低电量提醒</small><strong id="statusBat">已关闭</strong></div>
+    </div>
+    <p class="info">精确闹钟授权：Android 8–11 无需额外授权；此 Demo 不检测设备权限。</p>
+    <p class="info" id="statusBattery">阈值 25% · 最多 3 次 · 最短间隔 15 分钟</p>
+    <p class="info" id="statusSleep">睡眠免打扰：22:00–07:00（次日）</p>
+  </section>
+
+  <section class="card" aria-labelledby="annTitle">
+    <div class="cardhead">
+      <div><h2 class="cardtitle" id="annTitle">语音报时</h2><p class="subtitle">按北京时间，自动采用当前作息组</p></div>
+      <label class="toggle"><input id="annSwitch" class="switch" type="checkbox" role="switch" aria-label="开启语音报时" aria-describedby="annHint" disabled></label>
+    </div>
+    <p class="notice" id="annHint">请先为夏季或冬季选择至少一个报时时段。</p>
+    <fieldset class="tabs">
+      <legend class="sr-only">编辑作息组</legend>
+      <label><input type="radio" name="season" value="summer" checked><span id="summerTab">夏季</span></label>
+      <label><input type="radio" name="season" value="winter"><span id="winterTab">冬季</span></label>
+    </fieldset>
+    <div class="soft">
+      <h3 class="label" id="seasonTitle">夏季作息</h3>
+      <p class="subtitle" id="seasonRange">06月01日 – 11月30日</p>
+      <p class="info">夏冬是两套全年作息方案，春秋日期也按上述区间归组。</p>
+      <details id="dateEditor">
+        <summary>修改夏冬起始日期</summary>
+        <form id="dateForm" novalidate>
+          <div class="twocol">
+            <label>夏季起始月日<input class="datefield" id="summerStart" type="text" value="06-01" placeholder="06-01" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-describedby="dateHelp dateError" required></label>
+            <label>冬季起始月日<input class="datefield" id="winterStart" type="text" value="12-01" placeholder="12-01" maxlength="5" pattern="[0-9]{2}-[0-9]{2}" aria-describedby="dateHelp dateError" required></label>
+          </div>
+          <p class="info" id="dateHelp">格式：月-日。两个日期须有效且不同，不含 02-29；结束日自动取另一组起始日前一天。</p>
+          <p id="dateError" class="error" role="alert"></p>
+          <div class="quick"><button class="pill" type="submit">保存日期</button><button class="pill" type="button" id="cancelDates">取消修改</button></div>
+        </form>
+      </details>
+    </div>
+    <div style="margin-top:18px">
+      <h3 style="font-size:19px">报时时间 <span class="subtitle" id="selectedCount">已选 0 / 48</span></h3>
+      <p class="subtitle">每天 48 个整点、半点时段；修改仅影响正在编辑的作息组。</p>
+      <div class="quick">
+        <button class="pill" type="button" data-preset="common">常用时段</button>
+        <button class="pill" type="button" data-preset="hour">全部整点</button>
+        <button class="pill" type="button" data-preset="clear">清空本组</button>
+      </div>
+      <details class="timegroup" open><summary id="morningSummary">上午 00:00–11:30 · 已选 0</summary><div class="times" id="morningTimes"></div></details>
+      <details class="timegroup"><summary id="afternoonSummary">下午 12:00–23:30 · 已选 0</summary><div class="times" id="afternoonTimes"></div></details>
+    </div>
+    <p class="info">试听文案跟随最近点击的时段，试听不改变开关或提醒次数。</p>
+    <button class="preview" type="button" id="annPreview">
+      <span class="play" aria-hidden="true">▶</span>
+      <span><span class="label">试听报时文案</span><span class="subtitle" id="annPreviewText">现在是下午五点半</span></span>
+    </button>
+  </section>
+
+  <section class="card" aria-labelledby="batteryTitle">
+    <div class="cardhead">
+      <div><h2 class="cardtitle" id="batteryTitle">低电量提醒</h2><p class="subtitle">电量低于阈值时，提醒及时充电</p></div>
+      <label class="toggle"><input id="batSwitch" class="switch" type="checkbox" role="switch" aria-label="开启低电量提醒"></label>
+    </div>
+    <label class="label" for="threshold">提醒阈值</label>
+    <div class="rangebox">
+      <input id="threshold" type="range" min="5" max="99" step="1" value="25" aria-describedby="thresholdHint">
+      <output id="thresholdText" for="threshold">25%</output>
+    </div>
+    <p class="subtitle" id="thresholdHint">电量低于 25% 时提醒；等于阈值不提醒。</p>
+    <div class="row">
+      <div><label class="label" for="maxReminders">提醒次数</label><p class="subtitle">每轮最多成功提醒次数</p></div>
+      <select id="maxReminders">
+        <option value="1">1 次</option><option value="2">2 次</option><option value="3" selected>3 次</option><option value="4">4 次</option><option value="5">5 次</option>
+        <option value="6">6 次</option><option value="7">7 次</option><option value="8">8 次</option><option value="9">9 次</option><option value="10">10 次</option>
+      </select>
+    </div>
+    <div class="row">
+      <div><label class="label" for="intervalMinutes">提醒间隔</label><p class="subtitle">非睡眠时段的最短间隔</p></div>
+      <select id="intervalMinutes" aria-describedby="intervalHint"><option value="5">5 分钟</option><option value="15" selected>15 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option></select>
+    </div>
+    <p class="info" id="intervalHint">后台按约 15 分钟周期请求检查，系统省电可能让检测和提醒较长时间延迟。选择 5 分钟也不保证每 5 分钟提醒。</p>
+    <div class="dnd">
+      <div class="cardhead" style="margin-bottom:8px">
+        <div><div class="label">睡眠免打扰</div><p class="subtitle">每个睡眠时段最多成功提醒一次</p></div>
+        <label class="toggle"><input id="sleepSwitch" class="switch" type="checkbox" role="switch" aria-label="开启睡眠免打扰" checked></label>
+      </div>
+      <fieldset class="twocol" id="sleepFields">
+        <legend class="sr-only">北京时间睡眠时段</legend>
+        <label>开始时间<input class="timefield" id="sleepStart" type="time" step="1800" value="22:00" aria-describedby="sleepHint sleepError" required></label>
+        <label>结束时间<input class="timefield" id="sleepEnd" type="time" step="1800" value="07:00" aria-describedby="sleepHint sleepError" required></label>
+      </fieldset>
+      <p class="error" id="sleepError" role="alert"></p>
+      <p class="info" id="sleepHint">北京时间，22:00–次日 07:00；只选整点或半点，起止须不同。</p>
+      <p class="info">睡眠中的一次计入本轮总次数。醒来后仍低电量且有剩余次数，会在后续检查时按最短间隔继续提醒。</p>
+    </div>
+    <button class="preview" type="button" id="batteryPreview">
+      <span class="play" aria-hidden="true">▶</span>
+      <span><span class="label">试听低电量文案</span><span class="subtitle" id="batteryPreviewText">手机没电，请及时充电</span></span>
+    </button>
+    <p class="info">最近检查：尚未检查（界面演示）</p>
+    <details>
+      <summary>提醒与充电说明</summary>
+      <p class="info">只有检查时观察到接入电源、充电或电量恢复，才重置本轮次数。两次检查之间短暂插拔充电可能无法被观察到，次数可能不会重置。</p>
+      <p class="info">语音时钟不修改系统音量，也不绕过静音或系统免打扰。</p>
+    </details>
+  </section>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+</main>
+
+<script>
+const TIME_SLOTS=Array.from({length:48},(_,i)=>String(Math.floor(i/2)).padStart(2,'0')+':'+(i%2?'30':'00'));
+const SEASON_NAMES={summer:'夏季',winter:'冬季'};
+const BEIJING_OFFSET=8*60*60*1000;
+function chineseNumber(n){
+  const digits='零一二三四五六七八九';
+  if(n<10)return digits[n];
+  return (n<20?'':digits[Math.floor(n/10)])+'十'+(n%10?digits[n%10]:'');
+}
+function reportSpeech(slot){
+  const hour=Math.floor(slot/2);
+  return '现在是'+(hour<12?'上午':'下午')+chineseNumber(hour%12||12)+'点'+(slot%2?'半':'整');
+}
+function batterySpeech(){return '手机没电，请及时充电'}
+function beijingDate(now){return new Date(now.getTime()+BEIJING_OFFSET)}
+function monthDay(date){return date.toISOString().slice(5,10)}
+function validMonthDay(value){
+  if(!/^\d{2}-\d{2}$/.test(value))return false;
+  const [month,day]=value.split('-').map(Number);
+  const date=new Date(Date.UTC(2001,month-1,day));
+  return date.getUTCMonth()===month-1&&date.getUTCDate()===day;
+}
+function validStarts(starts){return validMonthDay(starts.summer)&&validMonthDay(starts.winter)&&starts.summer!==starts.winter}
+function seasonFor(md,starts){
+  const summer=starts.summer<starts.winter?md>=starts.summer&&md<starts.winter:md>=starts.summer||md<starts.winter;
+  return summer?'summer':'winter';
+}
+function rangeText(season,starts){
+  const start=starts[season],other=starts[season==='summer'?'winter':'summer'];
+  const [month,day]=other.split('-').map(Number);
+  const end=monthDay(new Date(Date.UTC(2001,month-1,day-1)));
+  const label=md=>md.replace('-','月')+'日';
+  return label(start)+' – '+(end<start?'次年':'')+(other==='03-01'?'02月末':label(end));
+}
+function validSleep(start,end){return /^([01]\d|2[0-3]):(00|30)$/.test(start)&&/^([01]\d|2[0-3]):(00|30)$/.test(end)&&start!==end}
+function nextAnnouncement(now,starts,schedules){
+  if(!schedules.summer.size&&!schedules.winter.size)return null;
+  const today=beijingDate(now);
+  const midnight=Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate())-BEIJING_OFFSET;
+  for(let day=0;day<367;day++){
+    const dayStart=midnight+day*86400000;
+    const season=seasonFor(monthDay(beijingDate(new Date(dayStart))),starts);
+    for(let slot=0;slot<48;slot++){
+      const time=dayStart+slot*1800000;
+      if(time>now.getTime()&&schedules[season].has(slot))return {time,season,slot};
+    }
+  }
+  return null;
+}
+
+// UI bindings
+const $=id=>document.getElementById(id);
+const state={
+  starts:{summer:'06-01',winter:'12-01'},
+  schedules:{summer:new Set(),winter:new Set()},
+  editingSeason:'summer',announcementsEnabled:false,batteryEnabled:false,
+  threshold:25,maxReminders:3,intervalMinutes:15,
+  sleepEnabled:true,sleepStart:'22:00',sleepEnd:'07:00',previewSlot:35
+};
+state.editingSeason=seasonFor(monthDay(beijingDate(new Date())),state.starts);
+let toastTimer;
+function toast(message){
+  $('toast').textContent=message;$('toast').classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3000);
+}
+function updateStatus(){
+  const now=new Date(),date=beijingDate(now),current=seasonFor(monthDay(date),state.starts);
+  const hour=date.getUTCHours(),minute=String(date.getUTCMinutes()).padStart(2,'0');
+  $('clockDate').textContent=date.toISOString().slice(0,10)+' · 北京时间 · '+(hour<12?'上午':'下午');
+  $('clock').textContent=String(hour%12||12).padStart(2,'0')+':'+minute;
+  $('currentSeason').textContent='当前作息组：'+SEASON_NAMES[current];
+  $('statusCount').textContent=state.schedules[current].size+' 个';
+  $('statusAnn').textContent=state.announcementsEnabled?'已开启':'已关闭';
+  $('statusBat').textContent=state.batteryEnabled?'已开启':'已关闭';
+  $('statusBattery').textContent='阈值 '+state.threshold+'% · 最多 '+state.maxReminders+' 次 · 最短间隔 '+state.intervalMinutes+' 分钟';
+  $('statusSleep').textContent='睡眠免打扰：'+(state.sleepEnabled?state.sleepStart+'–'+state.sleepEnd+(state.sleepEnd<state.sleepStart?'（次日）':''):'已关闭');
+  const next=state.announcementsEnabled?nextAnnouncement(now,state.starts,state.schedules):null;
+  $('nextAnnouncement').textContent=next?beijingDate(new Date(next.time)).toISOString().slice(0,10)+' '+TIME_SLOTS[next.slot]:'已关闭';
+  for(const season of ['summer','winter'])$(season+'Tab').textContent=SEASON_NAMES[season]+(season===current?' · 当前':'');
+  const empty=!state.schedules.summer.size&&!state.schedules.winter.size;
+  $('annHint').textContent=empty?'请先为夏季或冬季选择至少一个报时时段。':!state.schedules[current].size?'当前作息组未设置报时，将在启用后等待另一组生效。':state.announcementsEnabled?'已开启，下一次报时时间见顶部状态。':'当前作息组已配置，可开启语音报时。';
+}
+function render(){
+  const selected=state.schedules[state.editingSeason];
+  const empty=!state.schedules.summer.size&&!state.schedules.winter.size;
+  if(empty)state.announcementsEnabled=false;
+  $('annSwitch').disabled=empty;$('annSwitch').checked=state.announcementsEnabled;
+  $('batSwitch').checked=state.batteryEnabled;$('sleepSwitch').checked=state.sleepEnabled;
+  document.querySelectorAll('input[name=season]').forEach(input=>input.checked=input.value===state.editingSeason);
+  $('seasonTitle').textContent=SEASON_NAMES[state.editingSeason]+'作息';
+  $('seasonRange').textContent=rangeText(state.editingSeason,state.starts);
+  $('selectedCount').textContent='已选 '+selected.size+' / 48';
+  document.querySelectorAll('.time').forEach((button,slot)=>button.setAttribute('aria-pressed',String(selected.has(slot))));
+  const morning=[...selected].filter(slot=>slot<24).length;
+  $('morningSummary').textContent='上午 00:00–11:30 · 已选 '+morning;
+  $('afternoonSummary').textContent='下午 12:00–23:30 · 已选 '+(selected.size-morning);
+  $('annPreviewText').textContent=reportSpeech(state.previewSlot);
+  $('thresholdText').value=state.threshold+'%';
+  $('threshold').setAttribute('aria-valuetext',state.threshold+'%');
+  $('thresholdHint').textContent='电量低于 '+state.threshold+'% 时提醒；等于阈值不提醒。';
+  $('batteryPreviewText').textContent=batterySpeech();
+  $('sleepFields').disabled=!state.sleepEnabled;
+  $('sleepHint').textContent=state.sleepEnabled?'北京时间，'+state.sleepStart+'–'+(state.sleepEnd<state.sleepStart?'次日 ':'')+state.sleepEnd+'；只选整点或半点，起止须不同。':'睡眠免打扰已关闭，全天按最短间隔与剩余次数判断。';
+  updateStatus();
+}
+TIME_SLOTS.forEach((time,slot)=>{
+  const button=document.createElement('button');
+  button.type='button';button.className='time';button.textContent=time;
+  button.onclick=()=>{
+    const selected=state.schedules[state.editingSeason];
+    selected.has(slot)?selected.delete(slot):selected.add(slot);
+    state.previewSlot=slot;render();
+  };
+  $(slot<24?'morningTimes':'afternoonTimes').appendChild(button);
+});
+document.querySelectorAll('input[name=season]').forEach(input=>input.onchange=()=>{state.editingSeason=input.value;render()});
+document.querySelectorAll('[data-preset]').forEach(button=>button.onclick=()=>{
+  const selected=state.schedules[state.editingSeason];selected.clear();
+  if(button.dataset.preset==='common')[14,16,18,20,22,24,35,36].forEach(slot=>selected.add(slot));
+  if(button.dataset.preset==='hour')TIME_SLOTS.forEach((_,slot)=>{if(slot%2===0)selected.add(slot)});
+  render();
+});
+$('annSwitch').onchange=event=>{state.announcementsEnabled=event.target.checked;render()};
+$('batSwitch').onchange=event=>{state.batteryEnabled=event.target.checked;render()};
+$('threshold').oninput=event=>{state.threshold=Number(event.target.value);render()};
+for(const id of ['maxReminders','intervalMinutes'])$(id).onchange=event=>{state[id]=Number(event.target.value);render()};
+$('annPreview').onclick=()=>toast('示例文案：'+reportSpeech(state.previewSlot));
+$('batteryPreview').onclick=()=>toast('示例文案：'+batterySpeech());
+function resetDateDraft(){
+  for(const season of ['summer','winter']){$(season+'Start').value=state.starts[season];$(season+'Start').removeAttribute('aria-invalid')}
+  $('dateError').textContent='';
+}
+$('dateForm').onsubmit=event=>{
+  event.preventDefault();
+  const starts={summer:$('summerStart').value.trim(),winter:$('winterStart').value.trim()};
+  if(!validStarts(starts)){
+    $('dateError').textContent='未保存：请输入两个不同的有效月日（如 06-01），不允许 02-29。';
+    for(const season of ['summer','winter'])$(season+'Start').setAttribute('aria-invalid','true');
+    return;
+  }
+  state.starts=starts;resetDateDraft();$('dateEditor').open=false;render();toast('夏冬日期已保存');
+};
+$('cancelDates').onclick=()=>{resetDateDraft();$('dateEditor').open=false};
+function clearSleepError(){
+  $('sleepError').textContent='';$('sleepStart').removeAttribute('aria-invalid');$('sleepEnd').removeAttribute('aria-invalid');
+}
+for(const id of ['sleepStart','sleepEnd'])$(id).onchange=()=>{
+  const start=$('sleepStart').value,end=$('sleepEnd').value;
+  if(!validSleep(start,end)){
+    $('sleepError').textContent='未应用：起止须不同，且只能选择整点或半点。当前仍使用上次有效设置。';
+    $('sleepStart').setAttribute('aria-invalid','true');$('sleepEnd').setAttribute('aria-invalid','true');return;
+  }
+  state.sleepStart=start;state.sleepEnd=end;clearSleepError();render();
+};
+$('sleepSwitch').onchange=event=>{
+  state.sleepEnabled=event.target.checked;
+  $('sleepStart').value=state.sleepStart;$('sleepEnd').value=state.sleepEnd;clearSleepError();render();
+};
+render();setInterval(updateStatus,1000);
+</script>
+</body>
+</html>

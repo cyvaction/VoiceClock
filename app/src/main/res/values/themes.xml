@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.VoiceClock" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#245DCA</item>
+        <item name="android:navigationBarColor">#F6F8FC</item>
+        <item name="android:statusBarColor">#F6F8FC</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

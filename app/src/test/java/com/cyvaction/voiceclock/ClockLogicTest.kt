@@ -1,16 +1,122 @@
 package com.cyvaction.voiceclock
 
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.preferencesOf
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.MonthDay
 
 class ClockLogicTest {
+    @Test
+    fun demo4MigrationPreservesOldEmptySchedulesAndSeedsOnlyNewInstalls() = runBlocking {
+        val summer = longPreferencesKey("summer_mask")
+        val winter = longPreferencesKey("winter_mask")
+        val threshold = intPreferencesKey("threshold")
+        val migration = SettingsStore.scheduleDefaultsMigration
+        val fresh = migration.migrate(emptyPreferences())
+        assertEquals(ClockLogic.defaultScheduleMask(true), fresh[summer])
+        assertEquals(ClockLogic.defaultScheduleMask(false), fresh[winter])
+        assertFalse(migration.shouldMigrate(fresh))
+
+        val old = preferencesOf(summer to (1L shl 35), threshold to 30)
+        assertTrue(migration.shouldMigrate(old))
+        val upgraded = migration.migrate(old)
+        assertEquals(1L shl 35, upgraded[summer])
+        assertEquals(0L, upgraded[winter])
+        assertEquals(30, upgraded[threshold])
+        assertFalse(migration.shouldMigrate(upgraded))
+        val emptyOldSchedule = migration.migrate(preferencesOf(threshold to 30))
+        assertEquals(0L, emptyOldSchedule[summer])
+        assertEquals(0L, emptyOldSchedule[winter])
+        assertEquals(0L, migration.migrate(preferencesOf(summer to 0L, winter to 0L))[summer])
+    }
+
+    @Test
+    fun demo4DefaultsKeepFeaturesOffAndConstrainRecurringDates() {
+        val defaults = AppSettings()
+        assertFalse(defaults.announcementsEnabled)
+        assertFalse(defaults.batteryEnabled)
+        assertEquals(listOf(14, 16, 18, 20, 22, 24, 28, 32, 35, 36, 40, 42),
+            (0..47).filter { defaults.summerMask and (1L shl it) != 0L })
+        assertEquals(listOf(16, 18, 20, 22, 24, 28, 32, 35, 36, 40),
+            (0..47).filter { defaults.winterMask and (1L shl it) != 0L })
+        assertEquals("02-28", ClockLogic.seasonStartForMonth("01-31", 2))
+        assertEquals("04-30", ClockLogic.seasonStartForMonth("01-31", 4))
+        assertEquals("12-01", ClockLogic.seasonStartForMonth("06-01", 12))
+        for (month in 1..12) {
+            assertNotNull(ClockLogic.parseStart(ClockLogic.seasonStartForMonth("01-31", month)))
+        }
+    }
+
+    @Test
+    fun demo4SimulationHonorsThresholdIntervalCountAndChargingWithoutUsingLiveCounters() {
+        val settings = AppSettings(batteryEnabled = true, spokenCount = 2, batteryRoundActive = true)
+        val noon = Instant.parse("2026-09-21T04:00:00Z")
+        var round = SimulationState().check(noon, 25, false, settings)
+        assertEquals(0, round.count)
+        assertFalse(round.reminded)
+        round = round.check(noon, 24, false, settings)
+        assertEquals(1, round.count)
+        assertTrue(round.reminded)
+        assertFalse(round.check(noon.plusSeconds(14 * 60), 24, false, settings).reminded)
+        round = round.check(noon.plusSeconds(15 * 60), 24, false, settings)
+        assertEquals(2, round.count)
+        assertTrue(round.reminded)
+        round = round.check(noon.plusSeconds(30 * 60), 24, false, settings)
+        assertEquals(3, round.count)
+        assertFalse(round.check(noon.plusSeconds(60 * 60), 24, false, settings).reminded)
+        round = round.check(noon.plusSeconds(60 * 60), 24, true, settings)
+        assertEquals(0, round.count)
+        assertNull(round.lastAt)
+        round = round.check(noon.plusSeconds(60 * 60), 24, false, settings)
+        assertTrue(round.reminded)
+        assertEquals(0, round.check(noon.plusSeconds(60 * 60), 25, false, settings).count)
+        assertEquals(2, settings.spokenCount)
+    }
+
+    @Test
+    fun demo4SimulationRetainsSleepLimitAcrossMidnightAndCharging() {
+        val settings = AppSettings(batteryEnabled = true)
+        val night = Instant.parse("2026-09-21T14:00:00Z")
+        var round = SimulationState().check(night.minusSeconds(60), 24, false, settings)
+        round = round.check(night, 24, false, settings)
+        assertTrue(round.reminded) // Sleep ignores the daytime repeat interval.
+        assertEquals(2, round.count)
+        val midnight = night.plusSeconds(3 * 60 * 60)
+        assertFalse(round.check(midnight, 24, false, settings).reminded)
+        round = round.check(midnight, 24, true, settings)
+        assertEquals(0, round.count)
+        assertFalse(round.check(midnight, 24, false, settings).reminded)
+        round = round.check(night.plusSeconds(9 * 60 * 60), 24, false, settings)
+        assertTrue(round.reminded)
+        round = round.check(night.plusSeconds(24 * 60 * 60), 24, false, settings)
+        assertTrue(round.reminded)
+        assertEquals(2, round.sleepWindows.size)
+    }
+
+    @Test
+    fun demo4SimulationSupportsDisabledRulesAndRejectsClockRollback() {
+        val settings = AppSettings(batteryEnabled = true)
+        val now = Instant.parse("2026-09-21T14:00:00Z")
+        val round = SimulationState().check(now, 24, false, settings)
+        val disabled = round.check(now, 24, false, settings.copy(batteryEnabled = false))
+        assertFalse(disabled.reminded)
+        assertEquals(1, disabled.count)
+        assertTrue(round.check(now.plusSeconds(15 * 60), 24, false, settings.copy(sleepEnabled = false)).reminded)
+        assertThrows(IllegalArgumentException::class.java) { round.check(now.minusSeconds(1), 24, false, settings) }
+        assertThrows(IllegalArgumentException::class.java) { round.check(now, 101, false, settings) }
+    }
+
     @Test
     fun generatesEveryRequiredPhrase() {
         val timePhrases = (0..47).map(ClockLogic::announcementText)

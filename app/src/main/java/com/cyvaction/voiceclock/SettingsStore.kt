@@ -1,7 +1,9 @@
 package com.cyvaction.voiceclock
 
 import android.content.Context
+import androidx.datastore.core.DataMigration
 import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -11,14 +13,17 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore by preferencesDataStore("voice_clock")
+private val Context.dataStore by preferencesDataStore(
+    "voice_clock",
+    produceMigrations = { listOf(SettingsStore.scheduleDefaultsMigration) },
+)
 
 data class AppSettings(
     val announcementsEnabled: Boolean = false,
     val summerStart: String = "06-01",
     val winterStart: String = "12-01",
-    val summerMask: Long = 0,
-    val winterMask: Long = 0,
+    val summerMask: Long = ClockLogic.defaultScheduleMask(true),
+    val winterMask: Long = ClockLogic.defaultScheduleMask(false),
     val plannedAtMillis: Long = 0,
     val batteryEnabled: Boolean = false,
     val threshold: Int = 25,
@@ -33,6 +38,7 @@ data class AppSettings(
     val lastSleepWindowStartMillis: Long = 0,
     val lastCheckedAtMillis: Long = 0,
     val batteryRevision: Long = 0,
+    val residentServiceFailed: Boolean = false,
 )
 
 object SettingsStore {
@@ -55,15 +61,29 @@ object SettingsStore {
     private val lastSleepWindowStartMillisKey = longPreferencesKey("last_sleep_window_start")
     private val lastCheckedAtMillisKey = longPreferencesKey("last_checked_at")
     private val batteryRevisionKey = longPreferencesKey("battery_revision")
+    private val residentServiceFailedKey = booleanPreferencesKey("resident_service_failed")
     private val validMask = (1L shl 48) - 1
+
+    internal val scheduleDefaultsMigration = object : DataMigration<Preferences> {
+        override suspend fun shouldMigrate(currentData: Preferences): Boolean =
+            currentData[summerMaskKey] == null || currentData[winterMaskKey] == null
+
+        override suspend fun migrate(currentData: Preferences): Preferences = currentData.toMutablePreferences().apply {
+            val newInstall = currentData.asMap().isEmpty()
+            this[summerMaskKey] = currentData[summerMaskKey] ?: if (newInstall) ClockLogic.defaultScheduleMask(true) else 0L
+            this[winterMaskKey] = currentData[winterMaskKey] ?: if (newInstall) ClockLogic.defaultScheduleMask(false) else 0L
+        }
+
+        override suspend fun cleanUp() = Unit
+    }
 
     fun flow(context: Context) = context.dataStore.data.map { values ->
         AppSettings(
             announcementsEnabled = values[announcementsEnabledKey] ?: false,
             summerStart = values[summerStartKey] ?: "06-01",
             winterStart = values[winterStartKey] ?: "12-01",
-            summerMask = values[summerMaskKey] ?: 0,
-            winterMask = values[winterMaskKey] ?: 0,
+            summerMask = values[summerMaskKey] ?: ClockLogic.defaultScheduleMask(true),
+            winterMask = values[winterMaskKey] ?: ClockLogic.defaultScheduleMask(false),
             plannedAtMillis = values[plannedAtMillisKey] ?: 0,
             batteryEnabled = values[batteryEnabledKey] ?: false,
             threshold = (values[thresholdKey] ?: 25).coerceIn(5, 99),
@@ -78,6 +98,7 @@ object SettingsStore {
             lastSleepWindowStartMillis = values[lastSleepWindowStartMillisKey] ?: 0,
             lastCheckedAtMillis = values[lastCheckedAtMillisKey] ?: 0,
             batteryRevision = values[batteryRevisionKey] ?: 0,
+            residentServiceFailed = values[residentServiceFailedKey] ?: false,
         )
     }
 
@@ -99,7 +120,19 @@ object SettingsStore {
         require(slot in 0..47)
         context.dataStore.edit {
             val key = if (summer) summerMaskKey else winterMaskKey
-            it[key] = ((it[key] ?: 0L) xor (1L shl slot)) and validMask
+            val newMask = ((it[key] ?: ClockLogic.defaultScheduleMask(summer)) xor (1L shl slot)) and validMask
+            it[key] = newMask
+            val otherMask = it[if (summer) winterMaskKey else summerMaskKey] ?: ClockLogic.defaultScheduleMask(!summer)
+            if (newMask == 0L && otherMask == 0L) it[announcementsEnabledKey] = false
+        }
+    }
+
+    suspend fun setScheduleMask(context: Context, summer: Boolean, mask: Long) {
+        require(mask and validMask == mask)
+        context.dataStore.edit {
+            it[if (summer) summerMaskKey else winterMaskKey] = mask
+            val otherMask = it[if (summer) winterMaskKey else summerMaskKey] ?: ClockLogic.defaultScheduleMask(!summer)
+            if (mask == 0L && otherMask == 0L) it[announcementsEnabledKey] = false
         }
     }
 
@@ -172,6 +205,18 @@ object SettingsStore {
 
     suspend fun recordBatteryCheck(context: Context, checkedAt: Long) {
         context.dataStore.edit { it[lastCheckedAtMillisKey] = checkedAt }
+    }
+
+    suspend fun setResidentServiceFailed(context: Context, failed: Boolean) {
+        context.dataStore.edit { it[residentServiceFailedKey] = failed }
+    }
+
+    suspend fun reset(context: Context) {
+        context.dataStore.edit {
+            it.clear()
+            it[summerMaskKey] = ClockLogic.defaultScheduleMask(true)
+            it[winterMaskKey] = ClockLogic.defaultScheduleMask(false)
+        }
     }
 
     suspend fun applyBatteryDecision(

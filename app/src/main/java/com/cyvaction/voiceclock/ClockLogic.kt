@@ -16,6 +16,17 @@ data class BatteryDecision(
 object ClockLogic {
     val beijingZone: ZoneId = ZoneId.of("Asia/Shanghai")
 
+    fun defaultScheduleMask(summer: Boolean): Long =
+        (if (summer) listOf(14, 16, 18, 20, 22, 24, 28, 32, 35, 36, 40, 42)
+        else listOf(16, 18, 20, 22, 24, 28, 32, 35, 36, 40))
+            .fold(0L) { mask, slot -> mask or (1L shl slot) }
+
+    fun seasonStartForMonth(value: String, month: Int): String {
+        val day = requireNotNull(parseStart(value)).dayOfMonth
+        return MonthDay.of(month, day.coerceAtMost(LocalDate.of(2001, month, 1).lengthOfMonth()))
+            .toString().removePrefix("--")
+    }
+
     fun announcementText(slot: Int): String {
         require(slot in 0..47)
         val hour = slot / 2

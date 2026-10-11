@@ -20,7 +20,7 @@
 ## 当前构建与资源检查
 
 - SDK 许可：7/7 已接受。
-- `testDebugUnitTest`：9 个测试通过，0 failure/error/skip。
+- `testDebugUnitTest`：14 个测试通过，0 failure/error/skip。
 - `lintDebug`：通过；仅保留 6 个由锁定版本基线产生的更新提示。
 - `assembleDebug`：通过；APK 位于 `app\build\outputs\apk\debug\app-debug.apk`，SHA-256 `A39090AFD0A157B107BD672D2E33AC5C4A262B56BFAD8F40C52565145C8BEF69`。
 - 48 条报时语音和 1 条固定低电量语音均为 24 kHz 单声道 OGG/Vorbis；用户提示音为 44.1 kHz 单声道 PCM WAV。50 个资源均可完整解码、样本有限且非静音，文案清单、资源映射和提示音 SHA-256 一致。
@@ -62,6 +62,29 @@
 - 新增无提示音、低重要度持续通知的常驻前台服务；首次打开、`BOOT_COMPLETED` 和应用升级都会启动，返回 `START_STICKY` 请求系统在进程回收后恢复。
 - 常驻服务使用 `specialUse` 前台服务类型，不承载低电量判断、不取代 AlarmManager/WorkManager，也不持有唤醒锁；系统强行停止及厂商禁用自启动仍无法绕过。
 - `clean lintDebug testDebugUnitTest assembleDebug`、49 条语音资源与提示音校验、Demo 逻辑校验均通过；合并 Manifest 包含常驻服务与所需前台服务权限，未新增联网和通知运行时权限。
+
+## 2026-10-11 评审修复增量
+
+项目评审发现两个前台服务在 Manifest 声明了 `foregroundServiceType`，但调用的是不带 type 参数的 `startForeground(id, notification)` 旧重载。应用 targetSdk 36，在 Android 14（API 34）及以上设备上会抛出 `MissingForegroundServiceTypeException`：常驻服务在每次打开应用时崩溃，报时播放服务在闹钟触发时崩溃且语音无法播放。此前仅在 Android 8 实机验证，未覆盖此路径。
+
+修复内容：
+
+- `PlaybackService` 改用 `ServiceCompat.startForeground(this, id, notification, FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)`；`ResidentService` 改用 `ServiceCompat.startForeground(this, id, notification, FOREGROUND_SERVICE_TYPE_SPECIAL_USE)`。该 API 在 API 34+ 传 type，低版本回退旧重载，minSdk 26 不受影响。
+- 两个服务的 `Notification.Builder` 一并迁移为 `NotificationCompat.Builder`，消除过时 API。
+- 低电量面板新增计划要求的「系统省电可能让检测和提醒延迟；配置的间隔是两次成功提醒的最短间隔」说明，并在存在记录时显示最近检查时间（`lastCheckedAtMillis`）。
+- `MainActivity.onResume` 在 Android 15+ 上仅在低电量提醒当前为启用时才执行关闭和 Worker 取消，避免每次回到前台都写 DataStore。
+- `ResidentService.start` 失败时把 `residentServiceFailed` 写入 DataStore，设置页顶部显示「常驻后台服务未能自动启动」提示；服务成功创建时清回。
+- 删除历史原型 `voiceclock_demo_3.html` 和 `voiceclock_demo_3_preview.png`，保留 README 引用的 v4 原型及其测试；`voiceclock_demo_4.test.cjs` 中对 v3 音频资产的比对改为文件存在时才执行。
+- `.voice-tools/venv` 因基础解释器 `D:\app\Python312` 被移除而失效，本次语音资源校验改用 `.tmp/venv-verify`（Python 3.13 + numpy + soundfile，位于 gitignore 目录）运行项目自带脚本；语音生成环境如需重建按 README 步骤执行。
+
+本次验证结果（2026-10-11）：
+
+- `lintDebug`：通过，仅保留 6 个由锁定版本基线产生的更新提示；确认现有 Lint 规则不会检测「已声明 type 但未在运行时传入」的调用，P0 修复依赖代码评审发现。
+- `testDebugUnitTest`：14 个测试通过，0 failure/error/skip。
+- `assembleDebug`：通过。
+- `python tools/verify_voice_assets.py`：49 条语音 + 1 条提示音校验通过。
+- `node voiceclock_demo_4.test.cjs`：8 项检查通过。
+- Android 14+ 实机/模拟器冒烟（打开应用不崩、报时触发可播放、常驻通知存在）：本环境无可用设备与模拟器，未执行，留待接入 API 34+ 设备后补验；未标为已验证。
 
 ## 版本基线例外
 

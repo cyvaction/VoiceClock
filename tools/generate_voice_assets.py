@@ -63,6 +63,9 @@ def main() -> None:
             subtype="VORBIS",
         )
 
+    if not args.all:
+        return
+
     manifest = {
         "model": MODEL_REPO,
         "revision": MODEL_REVISION,

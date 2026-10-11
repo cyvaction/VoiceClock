@@ -75,7 +75,7 @@
 - `MainActivity.onResume` 在 Android 15+ 上仅在低电量提醒当前为启用时才执行关闭和 Worker 取消，避免每次回到前台都写 DataStore。
 - `ResidentService.start` 失败时把 `residentServiceFailed` 写入 DataStore，设置页顶部显示「常驻后台服务未能自动启动」提示；服务成功创建时清回。
 - 删除历史原型 `voiceclock_demo_3.html` 和 `voiceclock_demo_3_preview.png`，保留 README 引用的 v4 原型及其测试；`voiceclock_demo_4.test.cjs` 中对 v3 音频资产的比对改为文件存在时才执行。
-- `.voice-tools/venv` 因基础解释器 `D:\app\Python312` 被移除而失效，本次语音资源校验改用 `.tmp/venv-verify`（Python 3.13 + numpy + soundfile，位于 gitignore 目录）运行项目自带脚本；语音生成环境如需重建按 README 步骤执行。
+- `.voice-tools/venv` 因基础解释器 `D:\app\Python312` 被移除（机器现为 Python 3.13，`D:\app\Python313`）而失效，已用 Python 3.13.15 按 README 步骤重建：`python -m venv .voice-tools\venv` 后 `pip install -r tools\voice_requirements.txt`，旧 venv 已删除。重建后验证：`verify_voice_assets.py` 通过；`generate_voice_assets.py` 成功加载 onnxruntime 模型并生成 2 条样例（24 kHz 单声道 OGG，报时样例约 2.28 秒，与首版原型样例时长一致），解码正常。
 
 本次验证结果（2026-10-11）：
 

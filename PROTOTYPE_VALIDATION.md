@@ -126,6 +126,24 @@
 - `testDebugUnitTest`：14 个测试通过（Kotlin 未改动）。
 - 真机试听：本环境无设备，未执行实际出声验证，留待接入设备后补验；未标为已验证。
 
+## 2026-10-12 后台唤醒与保活 v2 增量
+
+按《VoiceClock 后台唤醒与保活优化计划v2》实施两项增量：
+
+- `AnnouncementScheduler.reschedule` 仅在没有下次报时时清零 `plannedAtMillis`；存在下次报时时先持久化计划时间，有精确闹钟权限则注册 `setExactAndAllowWhileIdle`，无权限则注册 `setAndAllowWhileIdle`，两者均使用 `RTC_WAKEUP` 并返回下次报时时间。接收器仍校验计划时间，后续授权时沿用现有广播重排路径，先取消旧闹钟再注册精确闹钟；原有 `SecurityException` 清零与返回逻辑保留。
+- `VoicePlayer` 的播放属性改为 `USAGE_ALARM`，音量守卫同步改为 `STREAM_ALARM`；音频焦点申请与两个音频资源共用该属性。保留 `RINGER_MODE_SILENT` 判断、提示音先播及语音 `0.82x` 速度。
+- 非精确闹钟在 Doze 下可能延迟；既有 5 分钟有效期保持不变，超过 5 分钟跳过本次报时，避免播放过时内容。
+
+本次验证结果（2026-10-12）：
+
+- PowerShell 设置 `GRADLE_USER_HOME` 为项目 `.gradle-user-home` 后执行 `.\gradlew.bat --no-daemon --offline clean lintDebug testDebugUnitTest assembleDebug`：通过，52 个任务执行。Kotlin daemon 因沙箱内无法写入用户目录而启动失败，Gradle 自动回退无 daemon 编译并完成构建；未修改项目构建配置。
+- `testDebugUnitTest`：14 个测试通过，0 failure/error/skip，包含延迟恰好 300 秒允许播放、301 秒拒绝及提前触发拒绝的边界检查。
+- `lintDebug`：0 error、5 warning（`BatteryLife`×1、`GradleDependency`×1、`InlinedApi`×2、`OldTargetApi`×1）。
+- `.\.voice-tools\venv\Scripts\python.exe .\tools\verify_voice_assets.py`：49 条语音 + 1 条提示音校验通过。
+- `node .\voiceclock_demo_4.test.cjs`：8 项检查通过；`git diff --check` 通过。
+- Debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
+- `adb devices -l` 未发现设备，因此未实测 Android 12/12L 拒绝精确闹钟权限后的非精确触发、授权后的切换、Doze 延迟及闹钟音量通道出声。现有单元测试覆盖逻辑边界，不覆盖 Android AlarmManager 与音频运行时；接入设备后仍需补验。
+
 ## 版本基线例外
 
 批准计划中的 Compose BOM `2026.08.00` 已要求 `compileSdk 37`，与计划锁定的 `compileSdk 36` 冲突。原型保留 API 36，并使用仍支持该平台的最新稳定 Compose BOM `2026.06.01`（Compose `1.11.4`）和 Core KTX `1.18.0`；此处据实记录基线例外。

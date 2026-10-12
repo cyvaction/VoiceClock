@@ -27,18 +27,20 @@ object AnnouncementScheduler {
         val next = if (settings.announcementsEnabled && summerStart != null && winterStart != null) {
             ClockLogic.nextAnnouncement(now, summerStart, winterStart, settings.summerMask, settings.winterMask)
         } else null
-        if (next == null || !canSchedule(context)) {
+        if (next == null) {
             SettingsStore.setPlannedAt(context, 0)
             return null
         }
 
         SettingsStore.setPlannedAt(context, next.toEpochMilli())
         return try {
-            context.getSystemService(AlarmManager::class.java).setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                next.toEpochMilli(),
-                pendingIntent(context, next.toEpochMilli()),
-            )
+            val alarmManager = context.getSystemService(AlarmManager::class.java)
+            val operation = pendingIntent(context, next.toEpochMilli())
+            if (canSchedule(context)) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toEpochMilli(), operation)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toEpochMilli(), operation)
+            }
             next
         } catch (_: SecurityException) {
             SettingsStore.setPlannedAt(context, 0)

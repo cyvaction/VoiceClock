@@ -23,7 +23,7 @@ object VoicePlayer {
         if (!canStart()) return false
         val audio = context.getSystemService(AudioManager::class.java)
         if (audio.ringerMode == AudioManager.RINGER_MODE_SILENT ||
-            audio.getStreamVolume(AudioManager.STREAM_NOTIFICATION) == 0
+            audio.getStreamVolume(AudioManager.STREAM_ALARM) == 0
         ) return false
 
         var player: MediaPlayer? = null
@@ -37,7 +37,7 @@ object VoicePlayer {
             }
         }
         val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
         val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)

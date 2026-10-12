@@ -6,6 +6,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
@@ -46,24 +47,31 @@ class PlaybackService : Service() {
             return START_NOT_STICKY
         }
         scope.launch {
-            withTimeoutOrNull(15_000) {
-                VoicePlayer.play(this@PlaybackService, rawId) {
-                    val settings = SettingsStore.get(this@PlaybackService)
-                    val summerStart = ClockLogic.parseStart(settings.summerStart)
-                    val winterStart = ClockLogic.parseStart(settings.winterStart)
-                    val instant = Instant.ofEpochMilli(plannedAt)
-                    settings.announcementsEnabled && summerStart != null && winterStart != null &&
-                        ClockLogic.shouldPlay(instant, Instant.now()) &&
-                        ClockLogic.isAnnouncementEnabled(
-                            instant,
-                            summerStart,
-                            winterStart,
-                            settings.summerMask,
-                            settings.winterMask,
-                        )
+            val wakeLock = getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
+            wakeLock.acquire(WAKE_LOCK_TIMEOUT_MS)
+            try {
+                withTimeoutOrNull(15_000) {
+                    VoicePlayer.play(this@PlaybackService, rawId) {
+                        val settings = SettingsStore.get(this@PlaybackService)
+                        val summerStart = ClockLogic.parseStart(settings.summerStart)
+                        val winterStart = ClockLogic.parseStart(settings.winterStart)
+                        val instant = Instant.ofEpochMilli(plannedAt)
+                        settings.announcementsEnabled && summerStart != null && winterStart != null &&
+                            ClockLogic.shouldPlay(instant, Instant.now()) &&
+                            ClockLogic.isAnnouncementEnabled(
+                                instant,
+                                summerStart,
+                                winterStart,
+                                settings.summerMask,
+                                settings.winterMask,
+                            )
+                    }
                 }
+            } finally {
+                if (wakeLock.isHeld) wakeLock.release()
+                stopSelf(startId)
             }
-            stopSelf(startId)
         }
         return START_NOT_STICKY
     }
@@ -80,5 +88,7 @@ class PlaybackService : Service() {
         const val EXTRA_PLANNED_AT = "planned_at"
         private const val CHANNEL_ID = "announcement_playback"
         private const val NOTIFICATION_ID = 1001
+        private const val WAKE_LOCK_TAG = "VoiceClock:playback"
+        private const val WAKE_LOCK_TIMEOUT_MS = 17_000L
     }
 }

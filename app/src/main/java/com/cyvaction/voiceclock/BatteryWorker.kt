@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
+import android.os.PowerManager
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -17,11 +18,17 @@ import java.util.concurrent.TimeUnit
 class BatteryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val settings = SettingsStore.get(applicationContext)
-        if (!settings.batteryEnabled || Build.VERSION.SDK_INT >= 35) return Result.success()
+        if (settings.batteryEnabled && Build.VERSION.SDK_INT < 35) {
+            runBatteryCheck(settings)
+        }
+        healAnnouncementAlarm()
+        return Result.success()
+    }
 
+    private suspend fun runBatteryCheck(settings: AppSettings) {
         val checkedAt = Instant.now()
         SettingsStore.recordBatteryCheck(applicationContext, checkedAt.toEpochMilli())
-        val snapshot = readSnapshot() ?: return Result.success()
+        val snapshot = readSnapshot() ?: return
         val decision = ClockLogic.batteryDecision(
             now = checkedAt,
             eligible = snapshot.isEligible(settings.threshold),
@@ -37,16 +44,23 @@ class BatteryWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         )
         if (!SettingsStore.applyBatteryDecision(applicationContext, settings.batteryRevision, decision) ||
             !decision.shouldPlay
-        ) return Result.success()
+        ) return
 
-        val played = withTimeoutOrNull(15_000) {
-            VoicePlayer.play(applicationContext, R.raw.battery_low) {
-                val latest = SettingsStore.get(applicationContext)
-                latest.batteryEnabled && latest.batteryRevision == settings.batteryRevision &&
-                    latest.batteryRoundActive && latest.spokenCount == decision.spokenCount &&
-                    readSnapshot()?.isEligible(latest.threshold) == true
-            }
-        } == true
+        val wakeLock = applicationContext.getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "VoiceClock:battery")
+        wakeLock.acquire(WAKE_LOCK_TIMEOUT_MS)
+        val played = try {
+            withTimeoutOrNull(15_000) {
+                VoicePlayer.play(applicationContext, R.raw.battery_low) {
+                    val latest = SettingsStore.get(applicationContext)
+                    latest.batteryEnabled && latest.batteryRevision == settings.batteryRevision &&
+                        latest.batteryRoundActive && latest.spokenCount == decision.spokenCount &&
+                        readSnapshot()?.isEligible(latest.threshold) == true
+                }
+            } == true
+        } finally {
+            if (wakeLock.isHeld) wakeLock.release()
+        }
         if (played) {
             SettingsStore.commitBatterySuccess(
                 applicationContext,
@@ -56,7 +70,16 @@ class BatteryWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 decision.sleepWindowStartMillis,
             )
         }
-        return Result.success()
+    }
+
+    private suspend fun healAnnouncementAlarm() {
+        val settings = SettingsStore.get(applicationContext)
+        if (!settings.announcementsEnabled) return
+        val plannedAt = settings.plannedAtMillis
+        val now = System.currentTimeMillis()
+        if (plannedAt == 0L || now - plannedAt > HEAL_GRACE_MS) {
+            AnnouncementScheduler.reschedule(applicationContext)
+        }
     }
 
     private fun readSnapshot(): BatterySnapshot? {
@@ -79,6 +102,8 @@ class BatteryWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
     companion object {
         private const val UNIQUE_NAME = "battery_check"
+        private const val WAKE_LOCK_TIMEOUT_MS = 17_000L
+        private const val HEAL_GRACE_MS = 5 * 60 * 1000L
         private val VALID_STATUSES = setOf(
             BatteryManager.BATTERY_STATUS_CHARGING,
             BatteryManager.BATTERY_STATUS_DISCHARGING,

@@ -5,6 +5,7 @@ import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -137,6 +138,7 @@ private fun VoiceClockScreen() {
     var showSeasonDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showSimulationDialog by remember { mutableStateOf(false) }
+    var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     var simulation by remember { mutableStateOf(SimulationState()) }
     var previewJob by remember { mutableStateOf<Job?>(null) }
     var playingText by remember { mutableStateOf<String?>(null) }
@@ -382,7 +384,18 @@ private fun VoiceClockScreen() {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(if (saveStatus == "已自动保存") "✓ $saveStatus" else saveStatus, modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            MoreActions(onSimulation = { showSimulationDialog = true }, onReset = { showResetDialog = true })
+                            MoreActions(
+                                onBatteryOptimization = {
+                                    val pm = context.getSystemService(PowerManager::class.java)
+                                    if (pm.isIgnoringBatteryOptimizations(context.packageName)) {
+                                        Toast.makeText(context, "已加入电池优化白名单", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        showBatteryOptimizationDialog = true
+                                    }
+                                },
+                                onSimulation = { showSimulationDialog = true },
+                                onReset = { showResetDialog = true },
+                            )
                         }
                     }
                 }
@@ -467,6 +480,29 @@ private fun VoiceClockScreen() {
         )
     }
 
+    if (showBatteryOptimizationDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatteryOptimizationDialog = false },
+            title = { Text("电池优化设置") },
+            text = { Text("系统电池优化（Doze）可能在部分设备上暂停后台闹钟，导致报时延迟或无法准时播放。加入电池优化白名单可让报时按计划运行。") },
+            confirmButton = {
+                Button(onClick = {
+                    showBatteryOptimizationDialog = false
+                    runCatching {
+                        context.startActivity(
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = ("package:" + context.packageName).toUri()
+                            },
+                        )
+                    }.onFailure {
+                        Toast.makeText(context, "无法打开电池优化设置", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("去设置") }
+            },
+            dismissButton = { TextButton(onClick = { showBatteryOptimizationDialog = false }) { Text("取消") } },
+        )
+    }
+
     SimulationDialog(
         visible = showSimulationDialog,
         settings = settings,
@@ -479,11 +515,12 @@ private fun VoiceClockScreen() {
 }
 
 @Composable
-private fun MoreActions(onSimulation: () -> Unit, onReset: () -> Unit) {
+private fun MoreActions(onBatteryOptimization: () -> Unit, onSimulation: () -> Unit, onReset: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { expanded = true }, modifier = Modifier.semantics { contentDescription = "更多操作" }) { Text("•••") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text("电池优化设置") }, onClick = { expanded = false; onBatteryOptimization() })
             DropdownMenuItem(text = { Text("场景测试") }, onClick = { expanded = false; onSimulation() })
             DropdownMenuItem(text = { Text("恢复默认") }, onClick = { expanded = false; onReset() })
         }

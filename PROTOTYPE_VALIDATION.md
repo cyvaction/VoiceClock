@@ -86,6 +86,29 @@
 - `node voiceclock_demo_4.test.cjs`：8 项检查通过。
 - Android 14+ 实机/模拟器冒烟（打开应用不崩、报时触发可播放、常驻通知存在）：本环境无可用设备与模拟器，未执行，留待接入 API 34+ 设备后补验；未标为已验证。
 
+## 2026-10-12 后台唤醒与保活优化增量
+
+按《VoiceClock 后台唤醒与保活优化计划》执行，补齐 7 个保活缺口（WakeLock、OEM 开机广播、闹钟自愈、Application 入口、电池优化引导）。借鉴 QQ 邮箱五层保活中适用于本项目的轻量部分，剔除长连接、多厂商推送通道等重量级方案。
+
+改动内容：
+
+- 权限：新增 `WAKE_LOCK`（播放期间短时 CPU 保活）与 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`（Doze 白名单引导）。未声明 `POST_NOTIFICATIONS`——前台服务无需通知运行时授权即可启动，当前 `IMPORTANCE_LOW` 通知已在 Android 8–14 验证通过。
+- OEM 开机广播：`RescheduleReceiver` 的 intent-filter 新增 `QUICKBOOT_POWERON`（小米/通用）、`com.huawei.intent.action.QUICKBOOT_POWERON`（华为）、`com.android.server.action.QUICKBOOT_POWERON`（OPPO）；`onReceive` 的开机分支从精确匹配 `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED` 改为匹配 `BOOT_ACTIONS` 子集，所有开机类 action 都触发 `ResidentService.start`。
+- 播放 WakeLock：`PlaybackService` 播放协程内获取 `PARTIAL_WAKE_LOCK`（`VoiceClock:playback`，`acquire(17s)` = 15s 播放超时 + 2s 冗余），`finally` 中按 `isHeld` 释放后再 `stopSelf`；不持有常驻 WakeLock。`BatteryWorker` 低电量播放改用同一模式（`VoiceClock:battery`，17s），作为前台进程保护的 CPU 保活补充。
+- 闹钟自愈：`BatteryWorker.doWork` 重构为「电量检查 + 报时闹钟自愈」两段；每次 Worker 运行末尾读取 `announcementsEnabled`/`plannedAtMillis`，若启用报时但 `plannedAtMillis == 0` 或已过期超过 5 分钟，则调用 `AnnouncementScheduler.reschedule` 重建下一个精确闹钟，作为每 15 分钟一次的中断兜底。
+- Application 入口：新增 `VoiceClockApp : Application`，`onCreate` 调用 `ResidentService.start(this)`；Manifest `<application>` 添加 `android:name=".VoiceClockApp"`。系统因 `START_STICKY` 重建进程（非强停）时，`Application.onCreate` 作为首入口立即恢复常驻服务，无需等待 `MainActivity` 或广播。
+- 电池优化引导：设置页「更多操作」菜单新增「电池优化设置」项；点击后用 `PowerManager.isIgnoringBatteryOptimizations` 判断，已加白名单则 Toast「已加入电池优化白名单」，否则弹出说明对话框，确认后发起 `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`（带 `package:` URI），失败则 Toast 提示。借鉴 QQ 邮箱 `keepalive/d`：仅用户主动点击时弹出，不在每次启动时强制弹出。
+
+本次验证结果（2026-10-12）：
+
+- `clean lintDebug testDebugUnitTest assembleDebug`：通过。
+- `testDebugUnitTest`：14 个测试通过，0 failure/error/skip。
+- `lintDebug`：0 error、7 warning。6 个为锁定版本基线产生的既有更新提示（`InlinedApi`×2、`OldTargetApi`、`AndroidGradlePluginVersion`、`GradleDependency`、`NewerVersionAvailable`）；新增 1 个 `BatteryLife` 提示，指向 `MainActivity.kt` 中 `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`。此为 Play Store 政策类**建议**（非错误），本应用报时属「用户显式配置的计划任务」这一可接受用例，且目标为国产 ROM 而非 Play 分发，故按计划保留该功能、据实记录此提示，不添加 `@SuppressLint` 压制。
+- `python tools/verify_voice_assets.py`：49 条语音 + 1 条提示音校验通过。
+- `node voiceclock_demo_4.test.cjs`：8 项检查通过。
+- 合并 Manifest 已确认包含两项新权限、`VoiceClockApp` 应用入口与三个 OEM 开机 action。
+- 真机/模拟器手测（OEM 开机广播触发、播放期间 WakeLock 持有、进程重建后常驻服务恢复、电池优化引导对话框）：本环境无可用设备与模拟器，未执行，留待接入设备后补验；未标为已验证。
+
 ## 版本基线例外
 
 批准计划中的 Compose BOM `2026.08.00` 已要求 `compileSdk 37`，与计划锁定的 `compileSdk 36` 冲突。原型保留 API 36，并使用仍支持该平台的最新稳定 Compose BOM `2026.06.01`（Compose `1.11.4`）和 Core KTX `1.18.0`；此处据实记录基线例外。

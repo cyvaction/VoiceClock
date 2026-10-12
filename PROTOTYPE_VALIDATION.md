@@ -109,6 +109,23 @@
 - 合并 Manifest 已确认包含两项新权限、`VoiceClockApp` 应用入口与三个 OEM 开机 action。
 - 真机/模拟器手测（OEM 开机广播触发、播放期间 WakeLock 持有、进程重建后常驻服务恢复、电池优化引导对话框）：本环境无可用设备与模拟器，未执行，留待接入设备后补验；未标为已验证。
 
+## 2026-10-12 前缀铃声替换增量
+
+将前缀提示音由 `ding_1.5s.wav` 替换为用户提供的 `叮咚音效声.mp3`。
+
+- 定位：前缀铃声唯一实际播放点为 `VoicePlayer.kt` 的 `playResource(R.raw.chime, 1f)`，资源为 `app/src/main/res/raw/chime.wav`（原为 `ding_1.5s.wav` 的拷贝，44.1 kHz 单声道 PCM_16）；播放方式为 Android `MediaPlayer.create`。
+- 格式与转换：`叮咚音效声.mp3` 原生即为 44.1 kHz 单声道（1.52 s、128 kb/s），与 `MediaPlayer` 兼容；但项目音频校验 `tools/verify_voice_assets.py` 用 `soundfile` 读取全部 raw 资源并硬断言 `chime.wav` 为 44.1 kHz，而 `soundfile` 不支持 MP3。为不改动播放代码与校验脚本，将 MP3 解码为 44.1 kHz 单声道 16-bit PCM WAV（与现有 `chime.wav` 格式一致、无需重采样）后替换 `res/raw/chime.wav`。
+- 引用更新：`tools/voice_assets_manifest.json` 与 `tools/generate_voice_assets.py` 中 `chime` 元数据同步更新（sha256 `FCBA4F97…EC0D`、时长 1.489 s、`source` 改为 `叮咚音效声.mp3`）；`R.raw.chime` 引用与 `VoicePlayer` 播放逻辑均不变。
+- 未改动：根目录 `ding_1.5s.wav` 源文件保留（README/计划文档仍引用）；浏览器原型 `voiceclock_demo_4.html` 内嵌的独立 chime 资产不变（非 App 实际播放路径）。
+
+本次验证结果（2026-10-12）：
+
+- `python tools/verify_voice_assets.py`：49 条语音 + 1 条提示音校验通过（新 chime 为 44.1 kHz 单声道、非静音）。
+- `assembleDebug`：通过；解包 APK 确认 `res/raw/chime.wav` SHA-256 为 `FCBA4F97…EC0D`，与解码后的 `叮咚音效声.mp3` 及仓库资源一致——前缀铃声实际播放的即新内容。
+- `node voiceclock_demo_4.test.cjs`：8 项通过（未受影响）。
+- `testDebugUnitTest`：14 个测试通过（Kotlin 未改动）。
+- 真机试听：本环境无设备，未执行实际出声验证，留待接入设备后补验；未标为已验证。
+
 ## 版本基线例外
 
 批准计划中的 Compose BOM `2026.08.00` 已要求 `compileSdk 37`，与计划锁定的 `compileSdk 36` 冲突。原型保留 API 36，并使用仍支持该平台的最新稳定 Compose BOM `2026.06.01`（Compose `1.11.4`）和 Core KTX `1.18.0`；此处据实记录基线例外。

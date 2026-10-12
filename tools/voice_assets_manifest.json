@@ -6,9 +6,9 @@
   "generation_prompt_suffix": "。",
   "chime": {
     "file": "chime.wav",
-    "source": "user-provided ding_1.5s.wav",
-    "sha256": "23218862A60B567D021F15828B08EC1D3FCCCE21D6BA8CDD351D9320E073875F",
-    "duration_seconds": 1.5,
+    "source": "user-provided 叮咚音效声.mp3",
+    "sha256": "FCBA4F978747544214BF91DA8287C3EFE2CD4B39E33316E0DBF76599F765EC0D",
+    "duration_seconds": 1.489,
     "sample_rate": 44100,
     "channels": 1,
     "subtype": "PCM_16"

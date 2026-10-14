@@ -1,0 +1,307 @@
+{
+  "website": "https://ai-speaker.net/",
+  "generated_date": "2026-10-14",
+  "voice": "新闻女声",
+  "speed": "1x",
+  "pitch": "1.2x",
+  "volume": "100%",
+  "format": "MP3",
+  "sample_rate": 24000,
+  "channels": 1,
+  "files": [
+    {
+      "file": "00_00.mp3",
+      "text": "现在是时间晚上12点整",
+      "sha256": "b7946bbc8a31d2d69492ed2da0afcee87fba0d46667b5c8265331b1ee8e41d99",
+      "duration_seconds": 2.52
+    },
+    {
+      "file": "00_30.mp3",
+      "text": "现在时间凌晨12点半",
+      "sha256": "caf1ec84a7fcd3c46332b8dceb4091d9b4734fe3d1b8efe2736d51e12816c841",
+      "duration_seconds": 2.208
+    },
+    {
+      "file": "01_00.mp3",
+      "text": "现在时间凌晨1点整",
+      "sha256": "e5b90e76fd64366c0db6f0272f72e5a9f4027946002ebc50dc706ebd34647fe1",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "01_30.mp3",
+      "text": "现在时间凌晨1点半",
+      "sha256": "076060caf2eb736db7d765b06d1cb7dd966098a6ba98eacdfb03752aea4ffbdf",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "02_00.mp3",
+      "text": "现在时间凌晨2点整",
+      "sha256": "96141a58681e4ee90dabd69bafe56bd0751b6f076c04f05a8347deb8599e900b",
+      "duration_seconds": 2.088
+    },
+    {
+      "file": "02_30.mp3",
+      "text": "现在时间凌晨2点半",
+      "sha256": "5220a8bd8bf7b8aadd5a1d29ef7c0ad4dcd7a2c1452d499ca1e52dcb9ea28a46",
+      "duration_seconds": 2.064
+    },
+    {
+      "file": "03_00.mp3",
+      "text": "现在时间凌晨3点整",
+      "sha256": "502d8bbfc07001635d40c332c8f3aa124aa3ebaa83f69a348cc768d5da585e79",
+      "duration_seconds": 2.064
+    },
+    {
+      "file": "03_30.mp3",
+      "text": "现在时间凌晨3点半",
+      "sha256": "2cccd6c0d66f768a1e4768abccbdbc4d304ce24d1c7d5dfac204d310aba3dc85",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "04_00.mp3",
+      "text": "现在时间凌晨4点整",
+      "sha256": "abf6bbc1e2ba5a6815659f91824bc37f097e16a1c5a80c9edfa7eccba4aaaf90",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "04_30.mp3",
+      "text": "现在时间凌晨4点半",
+      "sha256": "637b29af20a6dc9709e93fac8d83e6682f746c62f8a894475800c3928a94c0f9",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "05_00.mp3",
+      "text": "现在时间凌晨5点整",
+      "sha256": "c809f0a8df76214af2b074b6ff6a20ba4fc790e58733920b526373ba2597dea8",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "05_30.mp3",
+      "text": "现在时间凌晨5点半",
+      "sha256": "3d86d08a3dd2fa3cfc9661cd9f8f5109568b45f2dd735d761c34aec0b7c35dab",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "06_00.mp3",
+      "text": "现在时间上午6点整",
+      "sha256": "49ae8c00c3e79a69bf5a98b0f5f5a4f9e9dae59403b99d6e2c7ffcd5a98fac84",
+      "duration_seconds": 1.968
+    },
+    {
+      "file": "06_30.mp3",
+      "text": "现在时间上午6点半",
+      "sha256": "c02eead9ef73f892560ebc94048e2b1e89d3aa292a4f94e01db6ea8dd9bde994",
+      "duration_seconds": 1.968
+    },
+    {
+      "file": "07_00.mp3",
+      "text": "现在时间上午7点整",
+      "sha256": "894371578030e5465c0b98f595fb38bde6d9eae5c425b6259c74b5ef626405e1",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "07_30.mp3",
+      "text": "现在时间上午7点半",
+      "sha256": "f8982778692c03c90bb4bd0d1521e622b6c4b63fc5688df740e87d54a5470795",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "08_00.mp3",
+      "text": "现在时间上午8点整",
+      "sha256": "742247b69a447a2ee56f5c30f894231c81e95a7c3842105fe0b05da56e460447",
+      "duration_seconds": 1.896
+    },
+    {
+      "file": "08_30.mp3",
+      "text": "现在时间上午8点半",
+      "sha256": "7bec759d09b9f7e1ddb07d641348668086a4cd563afde9a2e3673eb66abfa76e",
+      "duration_seconds": 1.92
+    },
+    {
+      "file": "09_00.mp3",
+      "text": "现在时间上午9点整",
+      "sha256": "8a2aba02712e4a4b9189cb9f26ed2f41161fdd880b275ecbc560640ca05b6c0d",
+      "duration_seconds": 1.92
+    },
+    {
+      "file": "09_30.mp3",
+      "text": "现在时间上午9点半",
+      "sha256": "c038e5858a897363b728b34143901a4de4051536bdb86ac574f067120a6ca9c3",
+      "duration_seconds": 1.92
+    },
+    {
+      "file": "10_00.mp3",
+      "text": "现在时间上午10点整",
+      "sha256": "4f768cdbf7e1c6e9d7b1d02e39093956c177ac47dd1d8ad702369fff81bde27b",
+      "duration_seconds": 1.92
+    },
+    {
+      "file": "10_30.mp3",
+      "text": "现在时间上午10点半",
+      "sha256": "15e3ee2f0e0833a71c960cb34f952cdf8b4bdccb8a67238079817e78ee11d783",
+      "duration_seconds": 1.896
+    },
+    {
+      "file": "11_00.mp3",
+      "text": "现在时间上午11点整",
+      "sha256": "49e3883f32b04c8d315bc1308dbd7ce89be4b4e24a94f36444d8eb96087a7ed8",
+      "duration_seconds": 2.232
+    },
+    {
+      "file": "11_30.mp3",
+      "text": "现在时间上午11点半",
+      "sha256": "f2bcaeec6553764d9982819c90872b7e6eaaa8e6bd1e5b6f193d1597aeff4fd3",
+      "duration_seconds": 2.208
+    },
+    {
+      "file": "12_00.mp3",
+      "text": "现在时间中午12点整",
+      "sha256": "b0d680eba2c08c7c5918b4a9bc2e4265075bd39908cb532d76de21444b19d15c",
+      "duration_seconds": 2.208
+    },
+    {
+      "file": "12_30.mp3",
+      "text": "现在时间中午12点半",
+      "sha256": "b5f8c44ad92238b0d7619acccfb9d15d84c0e17fb3756ba12fd1e66e422ef61e",
+      "duration_seconds": 2.16
+    },
+    {
+      "file": "13_00.mp3",
+      "text": "现在时间下午1点整",
+      "sha256": "21ab382a2f436c79d966a417a5577da41998d93c14bda5da8d359e1063770991",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "13_30.mp3",
+      "text": "现在时间下午1点半",
+      "sha256": "f53c806248ce1da20c8de87c54450f1d1d924c13c4168f9f3c2672adbd3f2904",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "14_00.mp3",
+      "text": "现在时间下午2点整",
+      "sha256": "c31b1d8320f86be2601b9d49a2f831f01b309610c9361b3fd407b0b9d8a7a299",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "14_30.mp3",
+      "text": "现在时间下午2点半",
+      "sha256": "80b045664d97e8826d95430d369413358afba5f2ff0852228c5942aedb0fd30e",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "15_00.mp3",
+      "text": "现在时间下午3点整",
+      "sha256": "235e040b97311bd07b4ad057bfd1f4488771574bae4cef8703a08226845eece0",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "15_30.mp3",
+      "text": "现在时间下午3点半",
+      "sha256": "d2d36a0c51725bdfd6f4cda8ad99cf5c759d32d0eb4e8872bf8619bcd020f3e6",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "16_00.mp3",
+      "text": "现在时间下午4点整",
+      "sha256": "59af56062ba29408c289435d6643391bbfda900e1b51fd4bf6438b1597e18f64",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "16_30.mp3",
+      "text": "现在时间下午4点半",
+      "sha256": "322dd1b6ee91f3e1ecd8cdab1c253db0145a5205948ef83ec5df8bfb5fe7ad2c",
+      "duration_seconds": 1.992
+    },
+    {
+      "file": "17_00.mp3",
+      "text": "现在时间下午5点整",
+      "sha256": "392f9424532e4782166d9bd012400794d92ce624c414d52e8fc848e858a86c79",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "17_30.mp3",
+      "text": "现在时间下午5点半",
+      "sha256": "13087c73024667f1a90a3d82c6793590df936b7d9462cc07d3cbeec5a05db5e5",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "18_00.mp3",
+      "text": "现在时间晚上6点整",
+      "sha256": "972d5a9587e89095c223fff56a15b999ad54e3e4d1a27af0369ab8428449e238",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "18_30.mp3",
+      "text": "现在时间晚上6点半",
+      "sha256": "02a67f59ef893cc5a411b4e0775629a9113b21c4d8313cb9c1b1697af498f0b7",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "19_00.mp3",
+      "text": "现在时间晚上7点整",
+      "sha256": "dfceee4c077f68eae217110fff9d13c88dd02816e486ac0db858d63c571e28e1",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "19_30.mp3",
+      "text": "现在时间晚上7点半",
+      "sha256": "6e03525a437f6efb29f7f5bf1fecc1e74dc454a95d67123c732ca9d1f293c3b6",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "20_00.mp3",
+      "text": "现在时间晚上8点整",
+      "sha256": "b21d9697f007b5bb1b14eb4fea25ddcf6e31c2141c5368e22cc344afc20e5b56",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "20_30.mp3",
+      "text": "现在时间晚上8点半",
+      "sha256": "55748034d0382b417e5b97d430b2be17d72cafc584c8c9bd7257f65d30e5b22c",
+      "duration_seconds": 2.04
+    },
+    {
+      "file": "21_00.mp3",
+      "text": "现在时间晚上9点整",
+      "sha256": "d9917f8388c767943b75af3c9aba2ea106240214d595ef47602ad3a1fb6a472b",
+      "duration_seconds": 1.992
+    },
+    {
+      "file": "21_30.mp3",
+      "text": "现在时间晚上9点半",
+      "sha256": "02ddc2577832e6d3666ea5b4eb329582dbbd18f799fd4e94a33e5cd7d3706b8d",
+      "duration_seconds": 2.016
+    },
+    {
+      "file": "22_00.mp3",
+      "text": "现在时间晚上10点整",
+      "sha256": "0311f557c44532c132ca69f9a769fd78714d565ded60e34ea51dcabafeaf5a99",
+      "duration_seconds": 2.064
+    },
+    {
+      "file": "22_30.mp3",
+      "text": "现在时间晚上10点半",
+      "sha256": "b3e388b6122b356eff7b6bb858bcd53ee67e966fc8e4ba390b3223b5a4e2f8c7",
+      "duration_seconds": 2.064
+    },
+    {
+      "file": "23_00.mp3",
+      "text": "现在时间晚上11点整",
+      "sha256": "a93996d8809eecd883ab882978f61bc25832f172933f93fdee492e1f3193ba2c",
+      "duration_seconds": 2.256
+    },
+    {
+      "file": "23_30.mp3",
+      "text": "现在时间晚上11点半",
+      "sha256": "88ab9f67340793aa56a5cab83c3dac4b99138365b88d1903aea2332177fdb29e",
+      "duration_seconds": 2.256
+    }
+  ],
+  "battery_reminder": {
+    "file": "battery_low.mp3",
+    "text": "手机没电，请及时充电",
+    "sha256": "85f3d0fc3f2310071ea30e23c6805812af4390a6c76a4b8aa0aee988ed723138",
+    "duration_seconds": 2.352
+  }
+}

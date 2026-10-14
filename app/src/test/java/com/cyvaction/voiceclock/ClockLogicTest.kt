@@ -121,10 +121,19 @@ class ClockLogicTest {
     fun generatesEveryRequiredPhrase() {
         val timePhrases = (0..47).map(ClockLogic::announcementText)
         assertEquals(48, timePhrases.distinct().size)
-        assertEquals("现在是上午十二点整", timePhrases[0])
-        assertEquals("现在是上午七点整", timePhrases[14])
-        assertEquals("现在是下午十二点整", timePhrases[24])
-        assertEquals("现在是下午五点半", timePhrases[35])
+        assertEquals("现在是时间晚上12点整", timePhrases[0])
+        assertEquals("现在时间凌晨12点半", timePhrases[1])
+        assertEquals("现在时间凌晨5点半", timePhrases[11])
+        assertEquals("现在时间上午6点整", timePhrases[12])
+        assertEquals("现在时间上午10点整", timePhrases[20])
+        assertEquals("现在时间上午11点半", timePhrases[23])
+        assertEquals("现在时间中午12点整", timePhrases[24])
+        assertEquals("现在时间中午12点半", timePhrases[25])
+        assertEquals("现在时间下午1点半", timePhrases[27])
+        assertEquals("现在时间下午5点半", timePhrases[35])
+        assertEquals("现在时间晚上6点整", timePhrases[36])
+        assertEquals("现在时间晚上9点整", timePhrases[42])
+        assertEquals("现在时间晚上11点半", timePhrases[47])
 
         assertEquals("手机没电，请及时充电", ClockLogic.batteryText())
     }

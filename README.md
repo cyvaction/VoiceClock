@@ -53,13 +53,14 @@ Debug APK：`app\build\outputs\apk\debug\app-debug.apk`。
 
 ## 语音资源复现
 
-48 条报时语音来自用户提供的 `speaker/HH_mm.mp3`，按时刻对应内置的 `announcement_HHmm.mp3`。源文件已是单声道、24 kHz MP3，直接复制，无需格式转换或重新编码。叮咚提示音和低电量语音保持原资源；低电量语音由 `HojoAI/Hojo-TTS-Light-40M` 的 `hojo_zh_f_01` 生成。来源、文件校验值及低电量语音生成信息记录在 `tools/voice_assets_manifest.json`。
+48 条报时语音来自 `speaker/HH_mm.mp3`，按时刻对应内置的 `announcement_HHmm.mp3`；低电量提醒来自 `speaker/battery_low.mp3`。声音由 ai-speaker.net 生成，设置为新闻女声、语速 1x、音调 1.2x、音量 100%；本次以用户确认的当前 `speaker` 文件为准。所有语音均为单声道、24 kHz MP3，直接复制，无需重新编码，叮咚提示音保持原资源。报时使用“现在时间”及凌晨、上午、中午、下午、晚上分段，00:00 按用户要求保留“现在是时间晚上12点整”。网站生成记录见 `tools/speaker_generation_2026-10-14.json`，当前内置文件校验值见 `tools/voice_assets_manifest.json`。
 
 ```powershell
-Get-ChildItem .\speaker -Filter '*.mp3' | ForEach-Object {
+Get-ChildItem .\speaker -Filter '??_??.mp3' | ForEach-Object {
     $assetName = 'announcement_' + $_.BaseName.Replace('_', '') + '.mp3'
     Copy-Item -LiteralPath $_.FullName -Destination (Join-Path .\app\src\main\res\raw $assetName)
 }
+Copy-Item .\speaker\battery_low.mp3 .\app\src\main\res\raw\battery_low.mp3
 .\.voice-tools\venv\Scripts\python.exe .\tools\verify_voice_assets.py
 ```
 

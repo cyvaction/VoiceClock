@@ -16,14 +16,15 @@ expected_phrases = phrases(True)
 announcement_files = manifest["announcements"]["files"]
 expected_announcements = {f"{name}.mp3" for name in expected_phrases if name.startswith("announcement_")}
 assert set(announcement_files) == expected_announcements
-expected_files = expected_announcements | {"battery_low.ogg", "chime.wav"}
+expected_files = expected_announcements | {"battery_low.mp3", "chime.wav"}
 actual_files = {path.name for path in raw_dir.iterdir() if path.is_file()}
 
 assert manifest["assets"] == expected_phrases
 assert actual_files == expected_files, (sorted(expected_files - actual_files), sorted(actual_files - expected_files))
 assert hashlib.sha256((raw_dir / "chime.wav").read_bytes()).hexdigest().upper() == manifest["chime"]["sha256"]
 
-for name, record in announcement_files.items():
+speech_files = {**announcement_files, "battery_low.mp3": manifest["battery_reminder"]}
+for name, record in speech_files.items():
     packaged = raw_dir / name
     assert hashlib.sha256(packaged.read_bytes()).hexdigest().upper() == record["sha256"], name
     source = Path(record["source"])

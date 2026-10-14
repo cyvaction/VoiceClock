@@ -31,7 +31,15 @@ object ClockLogic {
         require(slot in 0..47)
         val hour = slot / 2
         val spokenHour = (hour % 12).takeUnless { it == 0 } ?: 12
-        return "现在是${if (hour < 12) "上午" else "下午"}${chineseNumber(spokenHour)}点${if (slot % 2 == 0) "整" else "半"}"
+        if (slot == 0) return "现在是时间晚上12点整"
+        val period = when (hour) {
+            in 0..5 -> "凌晨"
+            in 6..11 -> "上午"
+            12 -> "中午"
+            in 13..17 -> "下午"
+            else -> "晚上"
+        }
+        return "现在时间${period}${spokenHour}点${if (slot % 2 == 0) "整" else "半"}"
     }
 
     fun batteryText(): String = "手机没电，请及时充电"
@@ -151,12 +159,4 @@ object ClockLogic {
         return startDate.atStartOfDay(beijingZone).plusMinutes(startMinutes.toLong()).toInstant()
     }
 
-    private fun chineseNumber(value: Int): String {
-        require(value in 0..99)
-        val digits = "零一二三四五六七八九"
-        if (value < 10) return digits[value].toString()
-        val tens = if (value < 20) "" else digits[value / 10].toString()
-        val ones = if (value % 10 == 0) "" else digits[value % 10].toString()
-        return "${tens}十$ones"
-    }
 }

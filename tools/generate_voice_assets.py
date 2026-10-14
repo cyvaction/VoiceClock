@@ -20,8 +20,8 @@ def phrases(all_assets: bool) -> dict[str, str]:
         spoken_hour = hour % 12 or 12
         period = "凌晨" if hour < 6 else "上午" if hour < 12 else "中午" if hour == 12 else "下午" if hour < 18 else "晚上"
         result[f"announcement_{hour:02d}{'30' if slot % 2 else '00'}"] = (
-            "现在是时间晚上12点整" if slot == 0 else
-            f"现在时间{period}{spoken_hour}点{'整' if slot % 2 == 0 else '半'}"
+            "现在时间，晚上12点整" if slot == 0 else
+            f"现在时间，{period}{spoken_hour}点{'整' if slot % 2 == 0 else '半'}"
         )
     result["battery_low"] = "手机没电，请及时充电"
     return result

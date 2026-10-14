@@ -1,8 +1,11 @@
 package com.cyvaction.voiceclock
 
+import android.Manifest
+import android.app.NotificationManager
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -10,6 +13,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +88,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -102,30 +109,63 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
+    private var notificationsVisible by mutableStateOf(true)
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        refreshNotificationVisibility()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ResidentService.start(this)
         setContent {
             MaterialTheme(colorScheme = VoiceClockColors) {
-                VoiceClockScreen()
+                VoiceClockScreen(notificationsVisible, ::requestNotificationPermission, ::openNotificationSettings)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
+        refreshNotificationVisibility()
         lifecycleScope.launch {
             AnnouncementScheduler.reschedule(this@MainActivity)
+            if (SettingsStore.get(this@MainActivity).announcementsEnabled) requestNotificationPermission()
             if (Build.VERSION.SDK_INT >= 35 && SettingsStore.get(this@MainActivity).batteryEnabled) {
                 SettingsStore.setBatteryEnabled(this@MainActivity, false)
                 BatteryWorker.cancel(this@MainActivity)
             }
         }
     }
+
+    private fun refreshNotificationVisibility() {
+        val channel = getSystemService(NotificationManager::class.java).getNotificationChannel(ResidentService.CHANNEL_ID)
+        notificationsVisible = NotificationManagerCompat.from(this).areNotificationsEnabled() &&
+            channel?.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) return
+        val preferences = getSharedPreferences("notification_permission", MODE_PRIVATE)
+        if (preferences.getBoolean("requested", false)) return
+        preferences.edit { putBoolean("requested", true) }
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        })
+    }
 }
 
 @Composable
-private fun VoiceClockScreen() {
+private fun VoiceClockScreen(
+    notificationsVisible: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val settings by remember(context) { SettingsStore.flow(context) }.collectAsState(initial = AppSettings())
@@ -151,6 +191,10 @@ private fun VoiceClockScreen() {
     var sleepEndDraft by remember(settings.sleepEndMinutes) { mutableIntStateOf(settings.sleepEndMinutes) }
     var sleepError by remember { mutableStateOf("") }
     var thresholdDraft by remember(settings.threshold) { mutableFloatStateOf(settings.threshold.toFloat()) }
+
+    LaunchedEffect(settings.announcementsEnabled) {
+        if (settings.announcementsEnabled) onRequestNotificationPermission()
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -249,6 +293,10 @@ private fun VoiceClockScreen() {
                         )
                         if (settings.residentServiceFailed) {
                             Notice("常驻后台服务未能自动启动，重新打开应用或调整系统自启动设置后可恢复。")
+                        }
+                        if (settings.announcementsEnabled && !notificationsVisible) {
+                            Notice("通知未开启，无法在通知栏查看下次报时。")
+                            TextButton(onClick = onOpenNotificationSettings) { Text("开启通知") }
                         }
                         if (wide) {
                             UpcomingOverview(now, settings, upcoming, onTab = { selectedTab = it; tabFocus[it].requestFocus() })

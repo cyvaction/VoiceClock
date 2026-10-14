@@ -53,14 +53,14 @@ Debug APK：`app\build\outputs\apk\debug\app-debug.apk`。
 
 ## 语音资源复现
 
-语音使用 `HojoAI/Hojo-TTS-Light-40M` 的 `hojo_zh_f_01`。模型 revision、工具版本、文案及提示音校验值记录在 `tools/voice_assets_manifest.json`。
+48 条报时语音来自用户提供的 `speaker/HH_mm.mp3`，按时刻对应内置的 `announcement_HHmm.mp3`。源文件已是单声道、24 kHz MP3，直接复制，无需格式转换或重新编码。叮咚提示音和低电量语音保持原资源；低电量语音由 `HojoAI/Hojo-TTS-Light-40M` 的 `hojo_zh_f_01` 生成。来源、文件校验值及低电量语音生成信息记录在 `tools/voice_assets_manifest.json`。
 
 ```powershell
-python -m venv .voice-tools\venv
-.\.voice-tools\venv\Scripts\python.exe -m pip install -r tools\voice_requirements.txt
-git -c http.sslBackend=openssl clone https://github.com/HojoAI/Hojo-TTS-Light.git .voice-tools\Hojo-TTS-Light
-git -C .voice-tools\Hojo-TTS-Light checkout 52ed7ef017363c6c49c71c3a8a649899142243f3
-.\.voice-tools\venv\Scripts\python.exe .\tools\generate_voice_assets.py --all
+Get-ChildItem .\speaker -Filter '*.mp3' | ForEach-Object {
+    $assetName = 'announcement_' + $_.BaseName.Replace('_', '') + '.mp3'
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path .\app\src\main\res\raw $assetName)
+}
+.\.voice-tools\venv\Scripts\python.exe .\tools\verify_voice_assets.py
 ```
 
 Android 8 原型实机记录见 `PROTOTYPE_VALIDATION.md`。其他 Android 版本仅完成同一 APK 的代码、Lint 和构建兼容检查，未标为对应版本实机验证。

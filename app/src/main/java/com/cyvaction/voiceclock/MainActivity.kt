@@ -126,15 +126,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        isVisible = true
         refreshNotificationVisibility()
         lifecycleScope.launch {
             AnnouncementScheduler.reschedule(this@MainActivity)
-            if (SettingsStore.get(this@MainActivity).announcementsEnabled) requestNotificationPermission()
-            if (Build.VERSION.SDK_INT >= 35 && SettingsStore.get(this@MainActivity).batteryEnabled) {
-                SettingsStore.setBatteryEnabled(this@MainActivity, false)
-                BatteryWorker.cancel(this@MainActivity)
-            }
+            val settings = SettingsStore.get(this@MainActivity)
+            if (settings.announcementsEnabled || settings.batteryEnabled) requestNotificationPermission()
+            ResidentService.requestBatteryCheck("activity-resumed")
         }
+    }
+
+    override fun onPause() {
+        isVisible = false
+        super.onPause()
+    }
+
+    companion object {
+        @Volatile internal var isVisible = false
+            private set
     }
 
     private fun refreshNotificationVisibility() {
@@ -294,8 +303,8 @@ private fun VoiceClockScreen(
                         if (settings.residentServiceFailed) {
                             Notice("常驻后台服务未能自动启动，重新打开应用或调整系统自启动设置后可恢复。")
                         }
-                        if (settings.announcementsEnabled && !notificationsVisible) {
-                            Notice("通知未开启，无法在通知栏查看下次报时。")
+                        if ((settings.announcementsEnabled || settings.batteryEnabled) && !notificationsVisible) {
+                            Notice("通知未开启，无法在通知栏查看下次报时和低电量提醒次数。")
                             TextButton(onClick = onOpenNotificationSettings) { Text("开启通知") }
                         }
                         if (wide) {
@@ -385,7 +394,10 @@ private fun VoiceClockScreen(
                                 onEnabled = { enabled ->
                                     save {
                                         SettingsStore.setBatteryEnabled(context, enabled)
-                                        if (enabled) BatteryWorker.schedule(context) else BatteryWorker.cancel(context)
+                                        if (enabled) {
+                                            BatteryWorker.schedule(context)
+                                            onRequestNotificationPermission()
+                                        } else BatteryWorker.cancel(context)
                                     }
                                 },
                                 onThresholdChange = { thresholdDraft = it },
@@ -808,8 +820,8 @@ private fun BatteryPanel(
     onListen: () -> Unit,
 ) {
     PanelColumn {
-        SectionHeading("低电量提醒", settings.batteryEnabled, Build.VERSION.SDK_INT < 35, onEnabled)
-        if (Build.VERSION.SDK_INT >= 35) Notice("Android 15+ 暂不支持后台低电量语音，前台试听仍可使用。")
+        SectionHeading("低电量提醒", settings.batteryEnabled, true, onEnabled)
+        Notice(batteryStatusText(settings))
         Surface(color = SoftBlue, shape = RoundedCornerShape(16.dp)) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

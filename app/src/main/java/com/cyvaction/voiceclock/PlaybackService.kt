@@ -46,6 +46,7 @@ class PlaybackService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
+        VoicePlayer.priority.beginAnnouncement(plannedAt)
         scope.launch {
             val wakeLock = getSystemService(PowerManager::class.java)
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
@@ -70,6 +71,8 @@ class PlaybackService : Service() {
                 }
             } finally {
                 if (wakeLock.isHeld) wakeLock.release()
+                VoicePlayer.priority.endAnnouncement(plannedAt)
+                ResidentService.requestBatteryCheck("after-announcement")
                 stopSelf(startId)
             }
         }

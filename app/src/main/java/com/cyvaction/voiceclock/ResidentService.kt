@@ -6,6 +6,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -14,6 +16,11 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +36,17 @@ import java.util.Locale
 class ResidentService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    private val checks = Channel<String>(Channel.CONFLATED)
+    private var checkLoop: Job? = null
+    private var batteryRegistered = false
+    private var threshold = 25
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            BatteryReminder.cancelIfRecovered(context, threshold)
+            checks.trySend("battery-event")
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -38,18 +56,56 @@ class ResidentService : Service() {
                 setSound(null, null)
             },
         )
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            notification("正在读取报时计划"),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-        )
+        try {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                notification("正在读取报时计划"),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } catch (error: RuntimeException) {
+            Log.w("ResidentService", "Foreground promotion rejected", error)
+            serviceScope.launch {
+                try { SettingsStore.setResidentServiceFailed(this@ResidentService, true) }
+                finally { stopSelf() }
+            }
+            return
+        }
+        current = this
+        isReady = true
+        serviceScope.launch {
+            for (source in checks) {
+                try {
+                    BatteryReminder.check(this@ResidentService, source)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w("BatteryReminder", "Check failed; awaiting next opportunity", error)
+                }
+            }
+        }
+        serviceScope.launch {
+            SettingsStore.flow(this@ResidentService)
+                .map { Triple(it.batteryEnabled, it.batteryRevision, it.threshold) }
+                .distinctUntilChanged()
+                .collect { (enabled, _, newThreshold) ->
+                    threshold = newThreshold
+                    VoicePlayer.priority.cancelBattery()
+                    if (enabled) {
+                        startBatteryMonitoring()
+                        checks.trySend("settings-or-service-start")
+                    } else {
+                        stopBatteryMonitoring()
+                        BatteryWorker.cancel(this@ResidentService)
+                    }
+                }
+        }
         serviceScope.launch {
             SettingsStore.setResidentServiceFailed(this@ResidentService, false)
         }
         serviceScope.launch {
             SettingsStore.flow(this@ResidentService)
-                .map { residentNotificationText(it.announcementsEnabled, it.plannedAtMillis) }
+                .map { residentNotificationText(it.announcementsEnabled, it.plannedAtMillis) + "\n" + batteryStatusText(it) }
                 .distinctUntilChanged()
                 .catch {
                     Log.w("ResidentService", "Unable to read announcement plan", it)
@@ -69,7 +125,8 @@ class ResidentService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("语音时钟")
-            .setContentText(text)
+            .setContentText(text.substringBefore("\n"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
@@ -86,7 +143,38 @@ class ResidentService : Service() {
         }
     }
 
+    private fun startBatteryMonitoring() {
+        if (batteryRegistered) return
+        ContextCompat.registerReceiver(this, batteryReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        }, ContextCompat.RECEIVER_NOT_EXPORTED)
+        batteryRegistered = true
+        BatteryWorker.schedule(this)
+        checkLoop = serviceScope.launch {
+            while (isActive) {
+                delay(60_000L) // No wake lock or alarm: deliberately pauses with CPU sleep.
+                checks.trySend("resident-timer")
+            }
+        }
+    }
+
+    private fun stopBatteryMonitoring() {
+        checkLoop?.cancel()
+        checkLoop = null
+        if (batteryRegistered) {
+            unregisterReceiver(batteryReceiver)
+            batteryRegistered = false
+        }
+    }
+
     override fun onDestroy() {
+        isReady = false
+        current = null
+        VoicePlayer.priority.cancelBattery()
+        stopBatteryMonitoring()
+        checks.close()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -96,6 +184,14 @@ class ResidentService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        @Volatile internal var isReady = false
+            private set
+        @Volatile private var current: ResidentService? = null
+
+        fun requestBatteryCheck(source: String) {
+            current?.checks?.trySend(source)
+        }
+
         internal const val CHANNEL_ID = "resident_service"
         private const val NOTIFICATION_ID = 1002
 

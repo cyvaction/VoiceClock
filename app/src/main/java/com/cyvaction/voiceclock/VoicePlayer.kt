@@ -5,20 +5,49 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.RawRes
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 
 object VoicePlayer {
     private val mutex = Mutex()
+    internal val priority = PlaybackPriority { SystemClock.elapsedRealtime() }
     private const val SPEECH_SPEED = 0.82f
 
     suspend fun play(
         context: Context,
         @RawRes rawId: Int,
+        lowPriority: Boolean = false,
         canStart: suspend () -> Boolean = { true },
+    ): Boolean = coroutineScope {
+        val playback = async(start = CoroutineStart.LAZY) { playLocked(context, rawId, canStart) }
+        if (lowPriority && !priority.registerBattery(playback)) {
+            playback.cancel()
+            return@coroutineScope false
+        }
+        try {
+            playback.await()
+        } catch (error: CancellationException) {
+            ensureActive()
+            false // An announcement or battery/settings event cancelled only this child playback.
+        } finally {
+            if (lowPriority) priority.unregisterBattery(playback)
+        }
+    }
+
+    private suspend fun playLocked(
+        context: Context,
+        @RawRes rawId: Int,
+        canStart: suspend () -> Boolean,
     ): Boolean = mutex.withLock {
         if (!canStart()) return false
         val audio = context.getSystemService(AudioManager::class.java)
@@ -44,7 +73,9 @@ object VoicePlayer {
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener(listener)
             .build()
-        if (audio.requestAudioFocus(focusRequest) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
+        val focus = audio.requestAudioFocus(focusRequest)
+        Log.i("VoicePlayer", "focus=$focus raw=$rawId")
+        if (focus != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return false
 
         try {
             suspend fun playResource(@RawRes id: Int, speed: Float): Boolean {

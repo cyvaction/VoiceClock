@@ -3,7 +3,6 @@ package com.cyvaction.voiceclock
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +19,7 @@ class RescheduleReceiver : BroadcastReceiver() {
             try {
                 val settings = SettingsStore.get(context)
                 AnnouncementScheduler.reschedule(context)
-                if (settings.batteryEnabled && Build.VERSION.SDK_INT < 35) BatteryWorker.schedule(context)
+                if (settings.batteryEnabled) BatteryWorker.schedule(context)
                 else BatteryWorker.cancel(context)
             } finally {
                 pendingResult.finish()

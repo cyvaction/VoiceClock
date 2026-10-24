@@ -33,6 +33,7 @@ data class AppSettings(
     val sleepStartMinutes: Int = 22 * 60,
     val sleepEndMinutes: Int = 7 * 60,
     val batteryRoundActive: Boolean = false,
+    val batteryRoundId: Long = 0,
     val spokenCount: Int = 0,
     val lastSpokenAtMillis: Long = 0,
     val lastSleepWindowStartMillis: Long = 0,
@@ -55,6 +56,7 @@ object SettingsStore {
     private val sleepEnabledKey = booleanPreferencesKey("sleep_enabled")
     private val sleepStartMinutesKey = intPreferencesKey("sleep_start_minutes")
     private val sleepEndMinutesKey = intPreferencesKey("sleep_end_minutes")
+    private val batteryRoundIdKey = longPreferencesKey("battery_round_id")
     private val batteryRoundActiveKey = booleanPreferencesKey("battery_round_active")
     private val spokenCountKey = intPreferencesKey("spoken_count")
     private val lastSpokenAtMillisKey = longPreferencesKey("last_spoken_at")
@@ -93,6 +95,7 @@ object SettingsStore {
             sleepStartMinutes = values[sleepStartMinutesKey] ?: 22 * 60,
             sleepEndMinutes = values[sleepEndMinutesKey] ?: 7 * 60,
             batteryRoundActive = values[batteryRoundActiveKey] ?: false,
+            batteryRoundId = values[batteryRoundIdKey] ?: 0,
             spokenCount = values[spokenCountKey] ?: 0,
             lastSpokenAtMillis = values[lastSpokenAtMillisKey] ?: 0,
             lastSleepWindowStartMillis = values[lastSleepWindowStartMillisKey] ?: 0,
@@ -213,7 +216,11 @@ object SettingsStore {
 
     suspend fun reset(context: Context) {
         context.dataStore.edit {
+            val revision = (it[batteryRevisionKey] ?: 0) + 1
+            val roundId = (it[batteryRoundIdKey] ?: 0) + 1
             it.clear()
+            it[batteryRevisionKey] = revision
+            it[batteryRoundIdKey] = roundId
             it[summerMaskKey] = ClockLogic.defaultScheduleMask(true)
             it[winterMaskKey] = ClockLogic.defaultScheduleMask(false)
         }
@@ -222,11 +229,17 @@ object SettingsStore {
     suspend fun applyBatteryDecision(
         context: Context,
         expectedRevision: Long,
+        expectedRoundId: Long,
         decision: BatteryDecision,
     ): Boolean {
         var applied = false
         context.dataStore.edit {
-            if ((it[batteryEnabledKey] ?: false) && (it[batteryRevisionKey] ?: 0) == expectedRevision) {
+            if ((it[batteryEnabledKey] ?: false) && (it[batteryRevisionKey] ?: 0) == expectedRevision &&
+                (it[batteryRoundIdKey] ?: 0) == expectedRoundId
+            ) {
+                if ((it[batteryRoundActiveKey] ?: false) != decision.active) {
+                    it[batteryRoundIdKey] = expectedRoundId + 1
+                }
                 it[batteryRoundActiveKey] = decision.active
                 it[spokenCountKey] = decision.spokenCount
                 it[lastSpokenAtMillisKey] = decision.lastSpokenAtMillis
@@ -240,25 +253,36 @@ object SettingsStore {
         context: Context,
         expectedRevision: Long,
         expectedSpokenCount: Int,
+        expectedRoundId: Long,
         spokenAtMillis: Long,
         sleepWindowStartMillis: Long?,
     ): Boolean {
         var committed = false
         context.dataStore.edit {
-            if ((it[batteryEnabledKey] ?: false) &&
-                (it[batteryRevisionKey] ?: 0) == expectedRevision &&
-                (it[batteryRoundActiveKey] ?: false) &&
-                (it[spokenCountKey] ?: 0) == expectedSpokenCount
-            ) {
-                it[spokenCountKey] = expectedSpokenCount + 1
-                it[lastSpokenAtMillisKey] = spokenAtMillis
-                if (sleepWindowStartMillis != null) {
-                    it[lastSleepWindowStartMillisKey] = sleepWindowStartMillis
-                }
-                committed = true
-            }
+            committed = commitBatterySuccess(it, expectedRevision, expectedSpokenCount, expectedRoundId,
+                spokenAtMillis, sleepWindowStartMillis)
         }
         return committed
+    }
+
+    internal fun commitBatterySuccess(
+        values: MutablePreferences,
+        expectedRevision: Long,
+        expectedSpokenCount: Int,
+        expectedRoundId: Long,
+        spokenAtMillis: Long,
+        sleepWindowStartMillis: Long?,
+    ): Boolean {
+        if (!(values[batteryEnabledKey] ?: false) ||
+            (values[batteryRevisionKey] ?: 0) != expectedRevision ||
+            !(values[batteryRoundActiveKey] ?: false) ||
+            (values[batteryRoundIdKey] ?: 0) != expectedRoundId ||
+            (values[spokenCountKey] ?: 0) != expectedSpokenCount
+        ) return false
+        values[spokenCountKey] = expectedSpokenCount + 1
+        values[lastSpokenAtMillisKey] = spokenAtMillis
+        if (sleepWindowStartMillis != null) values[lastSleepWindowStartMillisKey] = sleepWindowStartMillis
+        return true
     }
 
     private fun bumpBatteryRevision(values: MutablePreferences) {
@@ -266,6 +290,7 @@ object SettingsStore {
     }
 
     private fun resetBatteryRound(values: MutablePreferences) {
+        values[batteryRoundIdKey] = (values[batteryRoundIdKey] ?: 0) + 1
         values[batteryRoundActiveKey] = false
         values[spokenCountKey] = 0
         values[lastSpokenAtMillisKey] = 0
